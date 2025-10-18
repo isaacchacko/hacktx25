@@ -4,9 +4,35 @@ const { createServer } = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
+const admin = require("firebase-admin");
 
 const app = express();
 const server = createServer(app);
+
+// Initialize Firebase Admin SDK
+// You'll need to replace this with your actual service account key
+const serviceAccount = {
+  // Add your Firebase service account configuration here
+  // You can get this from Firebase Console > Project Settings > Service Accounts
+  type: "service_account",
+  project_id: process.env.FIREBASE_PROJECT_ID,
+  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+  private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  client_email: process.env.FIREBASE_CLIENT_EMAIL,
+  client_id: process.env.FIREBASE_CLIENT_ID,
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token",
+  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+  client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${process.env.FIREBASE_CLIENT_EMAIL}`
+};
+
+if (process.env.FIREBASE_PROJECT_ID) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+} else {
+  console.log("Firebase Admin SDK not initialized - using mock authentication");
+}
 
 // Enable CORS for all origins
 app.use(cors());
@@ -21,41 +47,98 @@ const io = new Server(server, {
 // Store room information
 const rooms = new Map();
 
-// Store user tokens and their associated data
-const userTokens = new Map();
+// Store user sessions and their associated data
+const userSessions = new Map();
+
+// Helper function to verify Firebase token
+async function verifyFirebaseToken(token) {
+  try {
+    if (!admin.apps.length) {
+        // Firebase Admin SDK not initialized, use mock verification
+        console.log('Firebase Admin SDK not initialized - using mock authentication');
+        console.log('Token received:', token.substring(0, 20) + '...');
+        // Create a more unique mock user ID based on the entire token hash
+        const crypto = require('crypto');
+        const tokenHash = crypto.createHash('md5').update(token).digest('hex').slice(0, 12);
+        const mockUserId = `mock-user-${tokenHash}`;
+        console.log('Generated mock user ID:', mockUserId);
+        return { 
+          uid: mockUserId, 
+          email: 'mock@example.com',
+          name: 'Mock User'
+        };
+    }
+    
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    return decodedToken;
+  } catch (error) {
+    console.error('Error verifying Firebase token:', error);
+    return null;
+  }
+}
 
 io.on("connection", (socket) => {
   console.log("New connection:", socket.id);
   
-  // Get or generate persistent user token
-  socket.on("authenticate", (data) => {
+  // Authenticate with Firebase token
+  socket.on("authenticate", async (data) => {
     const { token } = data;
     
-    if (token && userTokens.has(token)) {
-      // Existing user - restore their data
-      const userData = userTokens.get(token);
-      socket.userId = userData.userId;
-      socket.userToken = token;
-      console.log(`User reconnected with token: ${token}`);
-    } else {
-      // New user - generate new token and data
-      const newToken = uuidv4();
-      const newUserId = uuidv4();
-      socket.userId = newUserId;
-      socket.userToken = newToken;
-      
-      // Store user data
-      userTokens.set(newToken, {
-        userId: newUserId,
-        createdAt: new Date(),
-        rooms: new Set()
-      });
-      
-      console.log(`New user created with token: ${newToken}`);
+    if (!token) {
+      socket.emit("error", "No token provided");
+      return;
     }
     
-    // Send the token back to the client
-    socket.emit("authenticated", { token: socket.userToken });
+    // Verify Firebase token
+    const decodedToken = await verifyFirebaseToken(token);
+    
+    if (!decodedToken) {
+      socket.emit("error", "Invalid token");
+      return;
+    }
+    
+    const userId = decodedToken.uid;
+    const userEmail = decodedToken.email;
+    
+    // Check if user already has a session
+    if (userSessions.has(userId)) {
+      // Existing user - restore their data
+      const userData = userSessions.get(userId);
+      socket.userId = userId;
+      socket.userEmail = userEmail;
+      socket.userToken = token;
+      
+      console.log(`User reconnected: ${userEmail} (${userId})`);
+    } else {
+      // New user - create new session
+      socket.userId = userId;
+      socket.userEmail = userEmail;
+      socket.userToken = token;
+      
+      // Store user data
+      userSessions.set(userId, {
+        userId: userId,
+        email: userEmail,
+        createdAt: new Date(),
+        rooms: new Set(),
+        lastSeen: new Date()
+      });
+      
+      console.log(`New user authenticated: ${userEmail} (${userId})`);
+    }
+    
+    // Update last seen
+    const userData = userSessions.get(userId);
+    if (userData) {
+      userData.lastSeen = new Date();
+    }
+    
+    // Send authentication success
+    socket.emit("authenticated", { 
+      userId: userId,
+      email: userEmail,
+      message: "Authentication successful"
+    });
   });
 
   // Handle creating a new room
@@ -72,34 +155,51 @@ io.on("connection", (socket) => {
       members: new Set(),
       createdAt: new Date(),
       questions: [],
-      presenterToken: socket.userToken,
-      presenterId: socket.userId
+      presenterId: socket.userId,
+      presenterEmail: socket.userEmail
     });
 
     // Join the room
     socket.join(joinCode);
     const room = rooms.get(joinCode);
-    room.members.add(socket.id);
+    room.members.add(socket.userId);
     
     // Update user's room list
-    const userData = userTokens.get(socket.userToken);
+    const userData = userSessions.get(socket.userId);
     if (userData) {
       userData.rooms.add(joinCode);
     }
     
-    console.log(`Room ${joinCode} created by presenter ${socket.userId} (token: ${socket.userToken})`);
+    console.log(`Room ${joinCode} created by presenter ${socket.userEmail} (${socket.userId})`);
+    console.log(`Room ${joinCode} now has ${room.members.size} members`);
     
     // Notify the creator
     socket.emit("room-created", {
       joinCode,
       message: `Room ${joinCode} created successfully`
     });
+
+    // Also send joined-room event to set presenter status
+    const joinedRoomData = {
+      joinCode,
+      memberCount: room.members.size,
+      message: `Successfully joined room ${joinCode}`,
+      isPresenter: true
+    };
+    console.log('Sending joined-room event with isPresenter:', joinedRoomData.isPresenter);
+    socket.emit("joined-room", joinedRoomData);
   });
 
   // Handle joining a room
   socket.on("join-room", (joinCode) => {
     if (!joinCode) {
       socket.emit("error", "Join code is required");
+      return;
+    }
+
+    // Check if room exists
+    if (!rooms.has(joinCode)) {
+      socket.emit("error", "Room not found");
       return;
     }
 
@@ -110,37 +210,36 @@ io.on("connection", (socket) => {
       }
     });
 
-    // Join the new room
+    // Join the room
     socket.join(joinCode);
     
-    // Initialize room if it doesn't exist
-    if (!rooms.has(joinCode)) {
-      rooms.set(joinCode, {
-        members: new Set(),
-        createdAt: new Date(),
-        questions: [],
-        presenterId: null
-      });
-    }
-
     // Add user to room
     const room = rooms.get(joinCode);
-    room.members.add(socket.id);
     
-    console.log(`User ${socket.id} joined room ${joinCode}`);
+    // Remove user from room if they're already in it (to handle reconnections)
+    if (room.members.has(socket.userId)) {
+      room.members.delete(socket.userId);
+    }
+    
+    room.members.add(socket.userId);
+    
+    console.log(`User ${socket.userId} (${socket.userEmail}) joined room ${joinCode}`);
     console.log(`Room ${joinCode} now has ${room.members.size} members`);
 
     // Notify the user they joined successfully
-    socket.emit("joined-room", {
+    const joinedRoomData = {
       joinCode,
       memberCount: room.members.size,
       message: `Successfully joined room ${joinCode}`,
-      isPresenter: room.presenterToken === socket.userToken
-    });
+      isPresenter: room.presenterId === socket.userId
+    };
+    console.log(`Room ${joinCode} presenterId:`, room.presenterId);
+    console.log(`User ${socket.userId} isPresenter:`, joinedRoomData.isPresenter);
+    socket.emit("joined-room", joinedRoomData);
 
     // Notify other members in the room
     socket.to(joinCode).emit("user-joined", {
-      userId: socket.id,
+      userId: socket.userId,
       memberCount: room.members.size,
       message: `New user joined room ${joinCode}`
     });
@@ -260,7 +359,7 @@ io.on("connection", (socket) => {
     const room = rooms.get(joinCode);
     
     // Check if user is the presenter
-    if (room.presenterToken !== socket.userToken) {
+    if (room.presenterId !== socket.userId) {
       socket.emit("error", "Only the presenter can mark questions as answered");
       return;
     }
