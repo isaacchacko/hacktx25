@@ -205,8 +205,18 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
   return (
     <div className={`flex justify-center items-center bg-gray-50 h-full w-full ${className}`}>
-      <div className="w-full h-full overflow-auto p-4">
-        <div className="flex items-center justify-center min-h-full min-w-full">
+      <div 
+        className={`w-full h-full p-4 ${
+          fitMode === 'height' ? 'overflow-x-auto overflow-y-hidden' :
+          fitMode === 'width' ? 'overflow-x-hidden overflow-y-auto' :
+          'overflow-auto'
+        }`}
+      >
+        <div className={`flex items-center justify-center ${
+          fitMode === 'height' ? 'h-full' :
+          fitMode === 'width' ? 'w-full' :
+          'min-h-full min-w-full'
+        }`}>
           <canvas
             ref={canvasCallbackRef}
             className="shadow-lg border border-gray-200 rounded-lg"

@@ -15,9 +15,9 @@ const PDFToolbar: React.FC<PDFToolbarProps> = ({
   className = ''
 }) => {
   const fitOptions = [
-    { mode: 'width' as PDFFitMode, label: 'Fit Width', icon: '↔️', description: 'Scale to fit width (scrollable height)' },
-    { mode: 'height' as PDFFitMode, label: 'Fit Height', icon: '↕️', description: 'Scale to fit height (scrollable width)' },
-    { mode: 'page' as PDFFitMode, label: 'Fit Page', icon: '📄', description: 'Scale to fit entire page' },
+    { mode: 'width' as PDFFitMode, label: 'Fit Width', icon: '↔️', description: 'Fit to width (vertical scroll if needed)' },
+    { mode: 'height' as PDFFitMode, label: 'Fit Height', icon: '↕️', description: 'Fit to height (horizontal scroll if needed)' },
+    { mode: 'page' as PDFFitMode, label: 'Fit Page', icon: '📄', description: 'Fit entire page in view' },
     { mode: 'auto' as PDFFitMode, label: 'Auto Fit', icon: '🔍', description: 'Choose largest readable size' }
   ];
 
