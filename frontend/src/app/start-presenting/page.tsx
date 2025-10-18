@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 export default function StartPresentingPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { socket, isConnected, createRoom, currentRoom } = useSocket();
+  const { socket, isConnected, createRoom, currentRoom, isAnonymous } = useSocket();
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +22,8 @@ export default function StartPresentingPage() {
   }, [currentRoom, isCreatingRoom, router]);
 
   const handleCreateRoom = () => {
-    if (!user) {
-      setError("Please sign in to create a room");
+    if (isAnonymous) {
+      setError("Anonymous users cannot create rooms. Please sign in to create a room.");
       return;
     }
 
@@ -52,24 +52,7 @@ export default function StartPresentingPage() {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Authentication Required</h2>
-            <p className="text-gray-600 mb-6">Please sign in to create or join a room.</p>
-            <a 
-              href="/" 
-              className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors inline-block"
-            >
-              Go to Sign In
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Remove authentication requirement - allow anonymous users
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -82,9 +65,9 @@ export default function StartPresentingPage() {
           <p className="text-gray-600">
             Create or join a room to start asking questions
           </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Signed in as: {user.email}
-          </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    {isAnonymous ? 'Anonymous user' : `Signed in as: ${user?.email}`}
+                  </p>
         </div>
 
         {/* Connection Status */}
@@ -116,21 +99,41 @@ export default function StartPresentingPage() {
         {/* Room Actions */}
         <div className="space-y-4">
           {/* Create Room */}
-          <div className="bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-200 rounded-lg shadow-md p-6">
+          <div className={`bg-gradient-to-r ${isAnonymous ? 'from-gray-50 to-gray-100 border-2 border-gray-200' : 'from-purple-50 to-purple-100 border-2 border-purple-200'} rounded-lg shadow-md p-6`}>
             <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-lg font-semibold text-purple-800">Create New Room</h3>
-              <span className="bg-purple-200 text-purple-700 px-2 py-1 rounded text-sm font-medium">🎤 PRESENTER</span>
+              <h3 className={`text-lg font-semibold ${isAnonymous ? 'text-gray-800' : 'text-purple-800'}`}>Create New Room</h3>
+              <span className={`px-2 py-1 rounded text-sm font-medium ${isAnonymous ? 'bg-gray-200 text-gray-700' : 'bg-purple-200 text-purple-700'}`}>🎤 PRESENTER</span>
             </div>
-            <p className="text-sm text-purple-700 mb-4">
-              Create a new room and become the presenter. You'll be able to mark questions as answered and manage the Q&A session.
+            <p className={`text-sm mb-4 ${isAnonymous ? 'text-gray-700' : 'text-purple-700'}`}>
+              {isAnonymous 
+                ? "Sign in to create rooms and become a presenter. You'll be able to mark questions as answered and manage Q&A sessions."
+                : "Create a new room and become the presenter. You'll be able to mark questions as answered and manage the Q&A session."
+              }
             </p>
-            <button
-              onClick={handleCreateRoom}
-              disabled={!isConnected || isCreatingRoom}
-              className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              {isCreatingRoom ? "Creating Room..." : "Create Room"}
-            </button>
+            {isAnonymous ? (
+              <div className="space-y-2">
+                <button
+                  disabled={true}
+                  className="w-full px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed transition-colors"
+                >
+                  Sign In Required
+                </button>
+                <a 
+                  href="/" 
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block text-center"
+                >
+                  Go to Sign In
+                </a>
+              </div>
+            ) : (
+              <button
+                onClick={handleCreateRoom}
+                disabled={!isConnected || isCreatingRoom}
+                className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {isCreatingRoom ? "Creating Room..." : "Create Room"}
+              </button>
+            )}
           </div>
 
           {/* Join Room */}

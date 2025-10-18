@@ -21,18 +21,13 @@ export default function JoinRoomPage() {
   const params = useParams();
   const joinCode = params.joinCode as string;
   const { user } = useAuth();
-  const { socket, isConnected, isPresenter, joinRoom, currentRoom } = useSocket();
+  const { socket, isConnected, isPresenter, isAnonymous, joinRoom, currentRoom } = useSocket();
   
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      setError("Please sign in to join a room");
-      return;
-    }
-
     if (socket && isConnected && currentRoom !== joinCode) {
       // Only join the room if we're not already in it
       console.log(`Joining room ${joinCode}, current room: ${currentRoom}`);
@@ -45,7 +40,7 @@ export default function JoinRoomPage() {
       console.log(`Already in room ${joinCode}, requesting questions`);
       socket.emit("get-questions", joinCode);
     }
-  }, [user, socket, isConnected, joinCode, currentRoom]); // Added currentRoom to dependencies
+  }, [socket, isConnected, joinCode, currentRoom]); // Removed user dependency
 
   useEffect(() => {
     if (!socket) return;
@@ -134,22 +129,7 @@ export default function JoinRoomPage() {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Authentication Required</h2>
-          <p className="text-gray-600 mb-6">Please sign in to join a room.</p>
-          <a 
-            href="/" 
-            className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors inline-block"
-          >
-            Go to Sign In
-          </a>
-        </div>
-      </div>
-    );
-  }
+  // Remove authentication requirement - allow anonymous users
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -174,18 +154,36 @@ export default function JoinRoomPage() {
             <span className="text-sm text-gray-600">
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
-            <span className="text-sm text-gray-600">
-              • Signed in as {user.email}
-            </span>
+                    <span className="text-sm text-gray-600">
+                      • {isAnonymous ? 'Anonymous user' : `Signed in as ${user?.email}`}
+                    </span>
           </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              Error: {error}
-            </div>
-          )}
-        </div>
+                  {/* Error Display */}
+                  {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                      Error: {error}
+                    </div>
+                  )}
+
+                  {/* Sign-in option for anonymous users */}
+                  {isAnonymous && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-blue-800">Want to create rooms?</h3>
+                          <p className="text-xs text-blue-600">Sign in to create your own Q&A rooms</p>
+                        </div>
+                        <a 
+                          href="/" 
+                          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
+                        >
+                          Sign In
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
         {/* Role Instructions */}
         <div className={`rounded-lg shadow-md p-4 mb-6 ${isPresenter 

@@ -9,6 +9,7 @@ interface SocketContextType {
   isConnected: boolean;
   currentRoom: string | null;
   isPresenter: boolean;
+  isAnonymous: boolean;
   joinRoom: (joinCode: string) => void;
   leaveRoom: () => void;
   createRoom: () => void;
@@ -20,40 +21,35 @@ export const useSocket = (): SocketContextType => {
   const [isConnected, setIsConnected] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<string | null>(null);
   const [isPresenter, setIsPresenter] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
     console.log('useSocket useEffect running, user:', user?.uid);
     
-    if (!user) {
-      // Disconnect socket if user is not authenticated
-      if (socketRef.current) {
-        console.log('Disconnecting socket - no user');
-        socketRef.current.disconnect();
-        socketRef.current = null;
-        setIsConnected(false);
-        setCurrentRoom(null);
-        setIsPresenter(false);
-      }
-      return;
-    }
-
-    // Connect to socket server with Firebase token
+    // Connect to socket server (with or without authentication)
     const connectSocket = async () => {
       try {
-        const token = await getIdToken();
-        if (!token) return;
-
         // Don't create a new socket if one already exists
         if (socketRef.current) {
           console.log('Socket already exists, skipping connection');
           return;
         }
 
-        console.log('Creating new socket connection for user:', user.uid);
-        const socket = io('http://localhost:3001', {
-          auth: {
-            token: token
+        let authData = {};
+        if (user) {
+          const token = await getIdToken();
+          if (token) {
+            authData = { token };
+            console.log('Creating authenticated socket connection for user:', user.uid);
+          } else {
+            console.log('Creating anonymous socket connection (no token)');
           }
+        } else {
+          console.log('Creating anonymous socket connection (no user)');
+        }
+
+        const socket = io('http://localhost:3001', {
+          auth: authData
         });
 
         socketRef.current = socket;
@@ -62,12 +58,19 @@ export const useSocket = (): SocketContextType => {
           console.log('Connected to socket server');
           setIsConnected(true);
           
-          // Authenticate with Firebase token
-          socket.emit('authenticate', { token });
+          // Authenticate (with or without token)
+          if (user) {
+            getIdToken().then(token => {
+              socket.emit('authenticate', { token });
+            });
+          } else {
+            socket.emit('authenticate', {});
+          }
         });
 
         socket.on('authenticated', (data) => {
           console.log('Socket authenticated:', data);
+          setIsAnonymous(data.isAnonymous || false);
         });
 
         socket.on('room-created', (data) => {
@@ -90,6 +93,7 @@ export const useSocket = (): SocketContextType => {
           setIsConnected(false);
           setCurrentRoom(null);
           setIsPresenter(false);
+          setIsAnonymous(false);
         });
 
         socket.on('error', (error) => {
@@ -110,7 +114,7 @@ export const useSocket = (): SocketContextType => {
         socketRef.current = null;
       }
     };
-  }, [user]); // Removed getIdToken from dependencies
+  }, [user, getIdToken]); // Re-added getIdToken since we need it for authentication
 
   const joinRoom = (joinCode: string) => {
     if (socketRef.current && isConnected) {
@@ -137,6 +141,7 @@ export const useSocket = (): SocketContextType => {
     isConnected,
     currentRoom,
     isPresenter,
+    isAnonymous,
     joinRoom,
     leaveRoom,
     createRoom

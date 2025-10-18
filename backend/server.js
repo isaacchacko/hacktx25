@@ -80,12 +80,37 @@ async function verifyFirebaseToken(token) {
 io.on("connection", (socket) => {
   console.log("New connection:", socket.id);
   
-  // Authenticate with Firebase token
+  // Authenticate with Firebase token (optional for anonymous users)
   socket.on("authenticate", async (data) => {
     const { token } = data;
     
     if (!token) {
-      socket.emit("error", "No token provided");
+      // Anonymous user - create a temporary session
+      const anonymousId = `anonymous-${socket.id}`;
+      socket.userId = anonymousId;
+      socket.userEmail = 'anonymous@example.com';
+      socket.userToken = null;
+      socket.isAnonymous = true;
+      
+      // Store anonymous user data
+      userSessions.set(anonymousId, {
+        userId: anonymousId,
+        email: 'anonymous@example.com',
+        createdAt: new Date(),
+        rooms: new Set(),
+        lastSeen: new Date(),
+        isAnonymous: true
+      });
+      
+      console.log(`Anonymous user connected: ${anonymousId}`);
+      
+      // Send authentication success for anonymous user
+      socket.emit("authenticated", { 
+        userId: anonymousId,
+        email: 'anonymous@example.com',
+        message: "Anonymous authentication successful",
+        isAnonymous: true
+      });
       return;
     }
     
@@ -107,6 +132,7 @@ io.on("connection", (socket) => {
       socket.userId = userId;
       socket.userEmail = userEmail;
       socket.userToken = token;
+      socket.isAnonymous = false;
       
       console.log(`User reconnected: ${userEmail} (${userId})`);
     } else {
@@ -114,6 +140,7 @@ io.on("connection", (socket) => {
       socket.userId = userId;
       socket.userEmail = userEmail;
       socket.userToken = token;
+      socket.isAnonymous = false;
       
       // Store user data
       userSessions.set(userId, {
@@ -121,7 +148,8 @@ io.on("connection", (socket) => {
         email: userEmail,
         createdAt: new Date(),
         rooms: new Set(),
-        lastSeen: new Date()
+        lastSeen: new Date(),
+        isAnonymous: false
       });
       
       console.log(`New user authenticated: ${userEmail} (${userId})`);
@@ -137,7 +165,8 @@ io.on("connection", (socket) => {
     socket.emit("authenticated", { 
       userId: userId,
       email: userEmail,
-      message: "Authentication successful"
+      message: "Authentication successful",
+      isAnonymous: false
     });
   });
 
@@ -145,6 +174,11 @@ io.on("connection", (socket) => {
   socket.on("create-room", () => {
     if (!socket.userId) {
       socket.emit("error", "User not authenticated");
+      return;
+    }
+    
+    if (socket.isAnonymous) {
+      socket.emit("error", "Anonymous users cannot create rooms. Please sign in to create a room.");
       return;
     }
     
