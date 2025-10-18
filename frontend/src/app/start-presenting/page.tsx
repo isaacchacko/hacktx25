@@ -2,73 +2,39 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { io, Socket } from "socket.io-client";
+import { useSocket } from "../../hooks/useSocket";
+import { useAuth } from "../context/AuthContext";
 
-export default function Home() {
+export default function StartPresentingPage() {
   const router = useRouter();
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const { user } = useAuth();
+  const { socket, isConnected, createRoom, currentRoom } = useSocket();
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [userToken, setUserToken] = useState<string | null>(null);
 
-  // Load token from localStorage on component mount
+  // Listen for room creation and navigate
   useEffect(() => {
-    const savedToken = localStorage.getItem('qa-room-token');
-    if (savedToken) {
-      setUserToken(savedToken);
+    if (currentRoom && isCreatingRoom) {
+      setIsCreatingRoom(false);
+      router.push(`/${currentRoom}`);
     }
-  }, []);
+  }, [currentRoom, isCreatingRoom, router]);
 
-  const connectToServer = () => {
-    if (socket) return;
-    
-    const newSocket = io("http://localhost:3001");
-    setSocket(newSocket);
+  const handleCreateRoom = () => {
+    if (!user) {
+      setError("Please sign in to create a room");
+      return;
+    }
 
-    newSocket.on("connect", () => {
-      console.log("Connected to server");
-      setIsConnected(true);
-      setError(null);
-      
-      // Authenticate with the server
-      newSocket.emit("authenticate", { token: userToken });
-    });
-
-    newSocket.on("authenticated", (data: { token: string }) => {
-      console.log("Authenticated with token:", data.token);
-      setUserToken(data.token);
-      localStorage.setItem('qa-room-token', data.token);
-    });
-
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from server");
-      setIsConnected(false);
-    });
-
-    newSocket.on("room-created", (data: { joinCode: string }) => {
-      console.log("Room created:", data);
-      setIsCreatingRoom(false);
-      router.push(`/${data.joinCode}`);
-    });
-
-    newSocket.on("error", (errorMessage: string) => {
-      console.error("Socket error:", errorMessage);
-      setError(errorMessage);
-      setIsCreatingRoom(false);
-    });
-  };
-
-  const createRoom = () => {
     if (!socket || !isConnected) {
-      setError("Not connected to server. Please connect first.");
+      setError("Not connected to server. Please try again.");
       return;
     }
 
     setIsCreatingRoom(true);
     setError(null);
-    socket.emit("create-room");
+    createRoom();
   };
 
   const joinRoom = () => {
@@ -86,6 +52,25 @@ export default function Home() {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Authentication Required</h2>
+            <p className="text-gray-600 mb-6">Please sign in to create or join a room.</p>
+            <a 
+              href="/" 
+              className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors inline-block"
+            >
+              Go to Sign In
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
@@ -96,6 +81,9 @@ export default function Home() {
           </h1>
           <p className="text-gray-600">
             Create or join a room to start asking questions
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Signed in as: {user.email}
           </p>
         </div>
 
@@ -112,12 +100,9 @@ export default function Home() {
           </div>
           
           {!isConnected && (
-            <button
-              onClick={connectToServer}
-              className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              Connect to Server
-            </button>
+            <p className="text-sm text-gray-600">
+              Connecting to server...
+            </p>
           )}
         </div>
 
@@ -140,7 +125,7 @@ export default function Home() {
               Create a new room and become the presenter. You'll be able to mark questions as answered and manage the Q&A session.
             </p>
             <button
-              onClick={createRoom}
+              onClick={handleCreateRoom}
               disabled={!isConnected || isCreatingRoom}
               className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >

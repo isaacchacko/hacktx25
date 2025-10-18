@@ -2,14 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { io, Socket } from "socket.io-client";
-
-interface RoomStatus {
-  joinCode: string;
-  memberCount: number;
-  message: string;
-  isPresenter: boolean;
-}
+import { useSocket } from "../../hooks/useSocket";
+import { useAuth } from "../context/AuthContext";
 
 interface Question {
   id: string;
@@ -26,108 +20,88 @@ interface Question {
 export default function JoinRoomPage() {
   const params = useParams();
   const joinCode = params.joinCode as string;
+  const { user } = useAuth();
+  const { socket, isConnected, isPresenter, joinRoom, currentRoom } = useSocket();
   
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [roomStatus, setRoomStatus] = useState<RoomStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
-  const [userToken, setUserToken] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load token from localStorage on component mount
   useEffect(() => {
-    const savedToken = localStorage.getItem('qa-room-token');
-    if (savedToken) {
-      setUserToken(savedToken);
+    if (!user) {
+      setError("Please sign in to join a room");
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    // Initialize socket connection
-    const newSocket = io("http://localhost:3001");
-    setSocket(newSocket);
-
-    // Connection event handlers
-    newSocket.on("connect", () => {
-      console.log("Connected to server");
-      setIsConnected(true);
-      setError(null);
-      
-      // Authenticate with the server
-      newSocket.emit("authenticate", { token: userToken });
-    });
-
-    newSocket.on("authenticated", (data: { token: string }) => {
-      console.log("Authenticated with token:", data.token);
-      setUserToken(data.token);
-      localStorage.setItem('qa-room-token', data.token);
-      
-      // Join the room after authentication
-      newSocket.emit("join-room", joinCode);
+    if (socket && isConnected && currentRoom !== joinCode) {
+      // Only join the room if we're not already in it
+      console.log(`Joining room ${joinCode}, current room: ${currentRoom}`);
+      joinRoom(joinCode);
       
       // Request existing questions
-      newSocket.emit("get-questions", joinCode);
-    });
+      socket.emit("get-questions", joinCode);
+    } else if (socket && isConnected && currentRoom === joinCode) {
+      // We're already in this room, just request questions
+      console.log(`Already in room ${joinCode}, requesting questions`);
+      socket.emit("get-questions", joinCode);
+    }
+  }, [user, socket, isConnected, joinCode, currentRoom]); // Added currentRoom to dependencies
 
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from server");
-      setIsConnected(false);
-    });
+  useEffect(() => {
+    if (!socket) return;
 
-    newSocket.on("joined-room", (status: RoomStatus) => {
-      console.log("Joined room:", status);
-      setRoomStatus(status);
+    // Set up event listeners
+    const handleJoinedRoom = (data: any) => {
+      console.log("Joined room:", data);
       setError(null);
-    });
+    };
 
-    newSocket.on("user-joined", (status: RoomStatus) => {
-      console.log("User joined:", status);
-      setRoomStatus(prev => prev ? { ...prev, memberCount: status.memberCount } : null);
-    });
-
-    newSocket.on("user-left", (status: RoomStatus) => {
-      console.log("User left:", status);
-      setRoomStatus(prev => prev ? { ...prev, memberCount: status.memberCount } : null);
-    });
-
-    newSocket.on("error", (errorMessage: string) => {
+    const handleError = (errorMessage: string) => {
       console.error("Socket error:", errorMessage);
       setError(errorMessage);
-    });
+    };
 
-    // Question-related event handlers
-    newSocket.on("new-question", (question: Question) => {
+    const handleNewQuestion = (question: Question) => {
       console.log("New question:", question);
       setQuestions(prev => [...prev, question]);
-    });
+    };
 
-    newSocket.on("question-updated", (question: Question) => {
+    const handleQuestionUpdated = (question: Question) => {
       console.log("Question updated:", question);
       setQuestions(prev => prev.map(q => q.id === question.id ? question : q));
-    });
+    };
 
-    newSocket.on("questions-list", (questionsList: Question[]) => {
+    const handleQuestionsList = (questionsList: Question[]) => {
       console.log("Questions list:", questionsList);
       setQuestions(questionsList);
-    });
-
-    // Cleanup on unmount
-    return () => {
-      newSocket.close();
     };
-  }, [joinCode, userToken]);
+
+    // Add event listeners
+    socket.on("joined-room", handleJoinedRoom);
+    socket.on("error", handleError);
+    socket.on("new-question", handleNewQuestion);
+    socket.on("question-updated", handleQuestionUpdated);
+    socket.on("questions-list", handleQuestionsList);
+
+    // Cleanup
+    return () => {
+      socket.off("joined-room", handleJoinedRoom);
+      socket.off("error", handleError);
+      socket.off("new-question", handleNewQuestion);
+      socket.off("question-updated", handleQuestionUpdated);
+      socket.off("questions-list", handleQuestionsList);
+    };
+  }, [socket]);
 
   const postQuestion = () => {
-    if (socket && newQuestion.trim() && roomStatus) {
+    if (socket && newQuestion.trim()) {
       socket.emit("post-question", {
         question: newQuestion.trim(),
-        joinCode: roomStatus.joinCode
+        joinCode: joinCode
       });
       setNewQuestion("");
     }
   };
-
 
   const handleQuestionKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -137,43 +111,60 @@ export default function JoinRoomPage() {
   };
 
   const markAsAnswered = (questionId: string) => {
-    if (socket && roomStatus) {
+    if (socket) {
       socket.emit("mark-answered", {
         questionId,
-        joinCode: roomStatus.joinCode
+        joinCode: joinCode
       });
     }
   };
 
   const getUserVote = (question: Question): string | null => {
-    if (!socket?.userId) return null;
-    return question.votes.get(socket.userId) || null;
+    if (!user) return null;
+    return question.votes.get(user.uid) || null;
   };
 
   const handleVote = (questionId: string, voteType: "upvote" | "downvote" | "remove") => {
-    if (socket && roomStatus) {
+    if (socket) {
       socket.emit("vote-question", {
         questionId,
         voteType,
-        joinCode: roomStatus.joinCode
+        joinCode: joinCode
       });
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Authentication Required</h2>
+          <p className="text-gray-600 mb-6">Please sign in to join a room.</p>
+          <a 
+            href="/" 
+            className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors inline-block"
+          >
+            Go to Sign In
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className={`rounded-lg shadow-md p-6 mb-6 ${roomStatus?.isPresenter ? 'bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-200' : 'bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200'}`}>
+        <div className={`rounded-lg shadow-md p-6 mb-6 ${isPresenter ? 'bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-200' : 'bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200'}`}>
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-bold text-gray-800">
               Room: {joinCode}
             </h1>
-            <div className={`px-4 py-2 rounded-full text-sm font-bold ${roomStatus?.isPresenter 
+            <div className={`px-4 py-2 rounded-full text-sm font-bold ${isPresenter 
               ? 'bg-purple-600 text-white shadow-lg' 
               : 'bg-blue-600 text-white shadow-lg'
             }`}>
-              {roomStatus?.isPresenter ? '🎤 PRESENTER' : '👥 ATTENDEE'}
+              {isPresenter ? '🎤 PRESENTER' : '👥 ATTENDEE'}
             </div>
           </div>
           
@@ -183,11 +174,9 @@ export default function JoinRoomPage() {
             <span className="text-sm text-gray-600">
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
-            {roomStatus && (
-              <span className="text-sm text-gray-600">
-                • {roomStatus.memberCount} member{roomStatus.memberCount !== 1 ? 's' : ''} in room
-              </span>
-            )}
+            <span className="text-sm text-gray-600">
+              • Signed in as {user.email}
+            </span>
           </div>
 
           {/* Error Display */}
@@ -196,49 +185,40 @@ export default function JoinRoomPage() {
               Error: {error}
             </div>
           )}
-
-          {/* Room Status */}
-          {roomStatus && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-              {roomStatus.message}
-            </div>
-          )}
         </div>
 
         {/* Role Instructions */}
-        {roomStatus && (
-          <div className={`rounded-lg shadow-md p-4 mb-6 ${roomStatus.isPresenter 
-            ? 'bg-purple-50 border-l-4 border-purple-400' 
-            : 'bg-blue-50 border-l-4 border-blue-400'
-          }`}>
-            <div className="flex items-start gap-3">
-              <div className={`text-2xl ${roomStatus.isPresenter ? 'text-purple-600' : 'text-blue-600'}`}>
-                {roomStatus.isPresenter ? '🎤' : '👥'}
-              </div>
-              <div>
-                <h3 className={`font-bold text-lg ${roomStatus.isPresenter ? 'text-purple-800' : 'text-blue-800'}`}>
-                  {roomStatus.isPresenter ? 'You are the PRESENTER' : 'You are an ATTENDEE'}
-                </h3>
-                <p className={`text-sm mt-1 ${roomStatus.isPresenter ? 'text-purple-700' : 'text-blue-700'}`}>
-                  {roomStatus.isPresenter 
-                    ? 'You can mark questions as answered/unanswered. You cannot vote on questions.'
-                    : 'You can ask questions and vote on unanswered questions. You cannot mark questions as answered.'
-                  }
-                </p>
-              </div>
+        <div className={`rounded-lg shadow-md p-4 mb-6 ${isPresenter 
+          ? 'bg-purple-50 border-l-4 border-purple-400' 
+          : 'bg-blue-50 border-l-4 border-blue-400'
+        }`}>
+          <div className="flex items-start gap-3">
+            <div className={`text-2xl ${isPresenter ? 'text-purple-600' : 'text-blue-600'}`}>
+              {isPresenter ? '🎤' : '👥'}
+            </div>
+            <div>
+              <h3 className={`font-bold text-lg ${isPresenter ? 'text-purple-800' : 'text-blue-800'}`}>
+                {isPresenter ? 'You are the PRESENTER' : 'You are an ATTENDEE'}
+              </h3>
+              <p className={`text-sm mt-1 ${isPresenter ? 'text-purple-700' : 'text-blue-700'}`}>
+                {isPresenter 
+                  ? 'You can mark questions as answered/unanswered. You cannot vote on questions.'
+                  : 'You can ask questions and vote on unanswered questions. You cannot mark questions as answered.'
+                }
+              </p>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Questions */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">Questions</h2>
-            <div className={`px-3 py-1 rounded-full text-sm font-medium ${roomStatus?.isPresenter 
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${isPresenter 
               ? 'bg-purple-100 text-purple-700' 
               : 'bg-blue-100 text-blue-700'
             }`}>
-              {roomStatus?.isPresenter 
+              {isPresenter 
                 ? '🎤 You can mark questions as answered' 
                 : '👥 You can vote on unanswered questions'
               }
@@ -268,7 +248,7 @@ export default function JoinRoomPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 ml-4">
-                        {roomStatus?.isPresenter ? (
+                        {isPresenter ? (
                           <div className="flex items-center gap-2">
                             {/* Voting buttons - disabled for presenter */}
                             <div className="flex items-center gap-2">
@@ -288,7 +268,7 @@ export default function JoinRoomPage() {
                             {/* Mark as answered button */}
                             <button
                               onClick={() => markAsAnswered(question.id)}
-                              disabled={!isConnected || !roomStatus}
+                              disabled={!isConnected}
                               className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm ${
                                 question.answered 
                                   ? 'bg-red-500 text-white hover:bg-red-600' 
@@ -304,7 +284,7 @@ export default function JoinRoomPage() {
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => handleVote(question.id, userVote === "upvote" ? "remove" : "upvote")}
-                                disabled={!isConnected || !roomStatus || question.answered}
+                                disabled={!isConnected || question.answered}
                                 className={`px-3 py-2 rounded-lg transition-colors font-medium ${
                                   userVote === "upvote"
                                     ? "bg-green-600 text-white hover:bg-green-700"
@@ -315,7 +295,7 @@ export default function JoinRoomPage() {
                               </button>
                               <button
                                 onClick={() => handleVote(question.id, userVote === "downvote" ? "remove" : "downvote")}
-                                disabled={!isConnected || !roomStatus || question.answered}
+                                disabled={!isConnected || question.answered}
                                 className={`px-3 py-2 rounded-lg transition-colors font-medium ${
                                   userVote === "downvote"
                                     ? "bg-red-600 text-white hover:bg-red-700"
@@ -344,19 +324,19 @@ export default function JoinRoomPage() {
         </div>
 
         {/* Question Input */}
-        <div className={`rounded-lg shadow-md p-6 mb-6 ${roomStatus?.isPresenter 
+        <div className={`rounded-lg shadow-md p-6 mb-6 ${isPresenter 
           ? 'bg-purple-50 border border-purple-200' 
           : 'bg-blue-50 border border-blue-200'
         }`}>
           <div className="flex items-center gap-2 mb-4">
-            <h3 className={`text-lg font-semibold ${roomStatus?.isPresenter ? 'text-purple-800' : 'text-blue-800'}`}>
+            <h3 className={`text-lg font-semibold ${isPresenter ? 'text-purple-800' : 'text-blue-800'}`}>
               Ask a Question
             </h3>
-            <span className={`text-sm px-2 py-1 rounded ${roomStatus?.isPresenter 
+            <span className={`text-sm px-2 py-1 rounded ${isPresenter 
               ? 'bg-purple-200 text-purple-700' 
               : 'bg-blue-200 text-blue-700'
             }`}>
-              {roomStatus?.isPresenter ? '🎤 Presenter' : '👥 Attendee'}
+              {isPresenter ? '🎤 Presenter' : '👥 Attendee'}
             </span>
           </div>
           <div className="flex gap-4">
@@ -365,22 +345,22 @@ export default function JoinRoomPage() {
               value={newQuestion}
               onChange={(e) => setNewQuestion(e.target.value)}
               onKeyPress={handleQuestionKeyPress}
-              placeholder={roomStatus?.isPresenter 
+              placeholder={isPresenter 
                 ? "Ask a question as the presenter..." 
                 : "Ask a question as an attendee..."
               }
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={!isConnected || !roomStatus}
+              disabled={!isConnected}
             />
             <button
               onClick={postQuestion}
-              disabled={!isConnected || !roomStatus || !newQuestion.trim()}
+              disabled={!isConnected || !newQuestion.trim()}
               className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               Ask
             </button>
           </div>
-          <p className={`text-sm mt-2 ${roomStatus?.isPresenter ? 'text-purple-600' : 'text-blue-600'}`}>
+          <p className={`text-sm mt-2 ${isPresenter ? 'text-purple-600' : 'text-blue-600'}`}>
             Press Enter to ask, or click the Ask button. Questions will be visible to all members in the room.
           </p>
         </div>
