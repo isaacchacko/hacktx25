@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { storage, db, auth } from '../app/lib/firebase';
 
 // Dynamically import PresentationViewer to prevent SSR issues
 const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
@@ -20,14 +21,18 @@ const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
 const PDFPresentationDemo: React.FC = () => {
   const router = useRouter();
   const [pdfUrl, setPdfUrl] = useState<string>('');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type === 'application/pdf') {
       const url = URL.createObjectURL(file);
       setPdfUrl(url);
+      setPdfFile(file); // Store the actual File object for upload
     } else {
       alert('Please select a valid PDF file');
     }
@@ -35,13 +40,80 @@ const PDFPresentationDemo: React.FC = () => {
 
   const handleUrlInput = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPdfUrl(event.target.value);
+    setPdfFile(null); // Clear file when using URL
   };
 
-  const handleCreatePresentation = () => {
-    if (pdfUrl) {
-      // Store PDF URL for later use in presentation
-      localStorage.setItem('presentation-pdf-url', pdfUrl);
+  const handleCreatePresentation = async () => {
+    if (!pdfUrl) return;
+
+    const user = auth.currentUser;
+    if (!user) {
+      alert('Please sign in to create a presentation');
+      router.push('/login');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setUploadProgress(0);
+      let finalPdfUrl = pdfUrl;
+      let fileName = 'External PDF';
+      let fileSize = 0;
+
+      // Hybrid approach: Upload file to Firebase Storage if it's a local file
+      if (pdfFile && pdfUrl.startsWith('blob:')) {
+        fileName = pdfFile.name;
+        fileSize = pdfFile.size;
+
+        // Create storage reference
+        const storageRef = storage.ref(`presentations/${user.uid}/${Date.now()}_${pdfFile.name}`);
+
+        // Upload file with progress tracking
+        const uploadTask = storageRef.put(pdfFile);
+
+        // Monitor upload progress
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error('Upload error:', error);
+            throw error;
+          }
+        );
+
+        // Wait for upload to complete
+        await uploadTask;
+
+        // Get download URL
+        finalPdfUrl = await storageRef.getDownloadURL();
+      }
+
+      // Save presentation metadata to Firestore
+      const presentationDoc = await db.collection('presentations').add({
+        pdfUrl: finalPdfUrl,
+        pdfType: pdfFile ? 'uploaded' : 'external',
+        userId: user.uid,
+        userEmail: user.email,
+        fileName: fileName,
+        fileSize: fileSize,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Store presentation ID and URL in localStorage
+      localStorage.setItem('presentation-id', presentationDoc.id);
+      localStorage.setItem('presentation-pdf-url', finalPdfUrl);
+
+      // Navigate to start-presenting page
       router.push('/start-presenting');
+
+    } catch (error) {
+      console.error('Error creating presentation:', error);
+      alert('Failed to create presentation. Please try again.');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -96,14 +168,16 @@ const PDFPresentationDemo: React.FC = () => {
           <div className="mt-4">
             <button
               onClick={handleCreatePresentation}
-              disabled={!pdfUrl}
+              disabled={!pdfUrl || isUploading}
               className={`w-full md:w-auto px-6 py-3 rounded-lg font-medium transition-colors ${
-                pdfUrl
+                pdfUrl && !isUploading
                   ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
                   : 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-50'
               }`}
             >
-              Create Presentation
+              {isUploading
+                ? `Uploading... ${Math.round(uploadProgress)}%`
+                : 'Create Presentation'}
             </button>
           </div>
         </div>
