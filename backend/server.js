@@ -298,10 +298,11 @@ io.on("connection", (socket) => {
       id: uuidv4(),
       text: question.trim(),
       authorId: socket.userId,
+      authorEmail: socket.userEmail,
       authorSocketId: socket.id,
       upvotes: 0,
       downvotes: 0,
-      votes: new Map(), // Track individual votes: userId -> voteType ('upvote', 'downvote', or null)
+      votes: {}, // Track individual votes: userId -> voteType ('upvote', 'downvote', or null)
       createdAt: new Date().toISOString(),
       answered: false
     };
@@ -334,7 +335,7 @@ io.on("connection", (socket) => {
     }
 
     // Get current vote for this user
-    const currentVote = question.votes.get(socket.userId) || null;
+    const currentVote = question.votes[socket.userId] || null;
     
     // Remove current vote if it exists
     if (currentVote === "upvote") {
@@ -346,12 +347,12 @@ io.on("connection", (socket) => {
     // Add new vote if voteType is not "remove"
     if (voteType === "upvote") {
       question.upvotes++;
-      question.votes.set(socket.userId, "upvote");
+      question.votes[socket.userId] = "upvote";
     } else if (voteType === "downvote") {
       question.downvotes++;
-      question.votes.set(socket.userId, "downvote");
+      question.votes[socket.userId] = "downvote";
     } else if (voteType === "remove") {
-      question.votes.delete(socket.userId);
+      delete question.votes[socket.userId];
     } else {
       socket.emit("error", "Invalid vote type");
       return;

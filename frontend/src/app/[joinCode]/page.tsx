@@ -9,10 +9,11 @@ interface Question {
   id: string;
   text: string;
   authorId: string;
+  authorEmail: string;
   authorSocketId: string;
   upvotes: number;
   downvotes: number;
-  votes: Map<string, string>; // userId -> voteType ('upvote', 'downvote', or null)
+  votes: { [userId: string]: string }; // userId -> voteType ('upvote', 'downvote', or null)
   createdAt: string;
   answered: boolean;
 }
@@ -116,7 +117,7 @@ export default function JoinRoomPage() {
 
   const getUserVote = (question: Question): string | null => {
     if (!user) return null;
-    return question.votes.get(user.uid) || null;
+    return question.votes[user.uid] || null;
   };
 
   const handleVote = (questionId: string, voteType: "upvote" | "downvote" | "remove") => {
@@ -309,7 +310,18 @@ export default function JoinRoomPage() {
                     </div>
                     <div className="flex justify-between items-center text-xs text-gray-500">
                       <span>
-                        Asked by {question.authorSocketId === socket?.id ? 'You' : `User ${question.authorSocketId.slice(0, 8)}`}
+                        Asked by {(() => {
+                          // Check if it's the current user
+                          if (question.authorId === user?.uid) {
+                            return 'You';
+                          }
+                          // Check if it's an anonymous user
+                          if (question.authorId.startsWith('anonymous-')) {
+                            return 'Anonymous user';
+                          }
+                          // For authenticated users, show the email like in "Signed in as"
+                          return question.authorEmail;
+                        })()}
                       </span>
                       <span>
                         {new Date(question.createdAt).toLocaleTimeString()}
