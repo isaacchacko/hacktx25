@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 
 // Dynamically import PresentationViewer to prevent SSR issues
 const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
@@ -17,6 +18,7 @@ const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
 });
 
 const PDFPresentationDemo: React.FC = () => {
+  const router = useRouter();
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -33,6 +35,14 @@ const PDFPresentationDemo: React.FC = () => {
 
   const handleUrlInput = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPdfUrl(event.target.value);
+  };
+
+  const handleCreatePresentation = () => {
+    if (pdfUrl) {
+      // Store PDF URL for later use in presentation
+      localStorage.setItem('presentation-pdf-url', pdfUrl);
+      router.push('/start-presenting');
+    }
   };
 
   return (
@@ -81,6 +91,21 @@ const PDFPresentationDemo: React.FC = () => {
               </p>
             </div>
           )}
+
+          {/* Create Presentation Button */}
+          <div className="mt-4">
+            <button
+              onClick={handleCreatePresentation}
+              disabled={!pdfUrl}
+              className={`w-full md:w-auto px-6 py-3 rounded-lg font-medium transition-colors ${
+                pdfUrl
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                  : 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-50'
+              }`}
+            >
+              Create Presentation
+            </button>
+          </div>
         </div>
 
         {/* PDF Viewer */}
