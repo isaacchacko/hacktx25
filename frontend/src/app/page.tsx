@@ -170,31 +170,24 @@ export default function Home() {
           textAlign: 'center'
         }}>
           <div style={{ maxWidth: '1000px' }}>
-            {/* Glowing Title */}
+            {/* Title */}
             <h1 style={{
               color: 'white',
-              fontSize: '56px',
+              fontSize: '72px',
               fontWeight: 'bold',
               marginBottom: '24px',
-              lineHeight: '1.1',
-              textShadow: '0 0 40px rgba(147, 112, 219, 0.8), 0 0 80px rgba(138, 43, 226, 0.4)',
-              background: 'linear-gradient(to right, #fff, #e0c3fc, #fff)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              animation: 'titlePulse 3s ease-in-out infinite'
+              lineHeight: '1.1'
             }}>
               Present Among the Stars
             </h1>
 
             <p style={{
-              color: 'rgba(255,255,255,0.9)',
+              color: 'white',
               fontSize: '20px',
               marginBottom: '48px',
               lineHeight: '1.6',
               maxWidth: '700px',
-              margin: '0 auto 48px',
-              textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+              margin: '0 auto 48px'
             }}>
               Illuminate your presentations with real-time Q&A,
               cosmic AI summaries, and stellar audience engagement
@@ -205,8 +198,7 @@ export default function Home() {
               display: 'flex',
               gap: '20px',
               justifyContent: 'center',
-              flexWrap: 'wrap',
-              marginBottom: '64px'
+              flexWrap: 'wrap'
             }}>
               <Link href={user ? "/upload" : "/login"}>
                 <button style={{
@@ -214,7 +206,7 @@ export default function Home() {
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   border: '2px solid rgba(255,255,255,0.3)',
-                  borderRadius: '28px',
+                  borderRadius: '20px',
                   fontSize: '18px',
                   fontWeight: '700',
                   cursor: 'pointer',
@@ -243,15 +235,15 @@ export default function Home() {
                 <Link href="/dashboard">
                   <button style={{
                     padding: '16px 36px',
-                    background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     color: 'white',
                     border: '2px solid rgba(255,255,255,0.3)',
-                    borderRadius: '28px',
+                    borderRadius: '20px',
                     fontSize: '18px',
                     fontWeight: '700',
                     cursor: 'pointer',
                     transition: 'all 0.4s',
-                    boxShadow: '0 8px 32px rgba(40, 167, 69, 0.5), inset 0 -2px 10px rgba(0,0,0,0.2)',
+                    boxShadow: '0 8px 32px rgba(16, 185, 129, 0.5), inset 0 -2px 10px rgba(0,0,0,0.2)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
@@ -259,11 +251,11 @@ export default function Home() {
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.transform = 'translateY(-4px) scale(1.03)';
-                    e.currentTarget.style.boxShadow = '0 12px 40px rgba(40, 167, 69, 0.6), inset 0 -2px 10px rgba(0,0,0,0.2)';
+                    e.currentTarget.style.boxShadow = '0 12px 40px rgba(16, 185, 129, 0.6), inset 0 -2px 10px rgba(0,0,0,0.2)';
                   }}
                   onMouseOut={(e) => {
                     e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = '0 8px 32px rgba(40, 167, 69, 0.5), inset 0 -2px 10px rgba(0,0,0,0.2)';
+                    e.currentTarget.style.boxShadow = '0 8px 32px rgba(16, 185, 129, 0.5), inset 0 -2px 10px rgba(0,0,0,0.2)';
                   }}
                   >
                     <span style={{ fontSize: '24px' }}>🌟</span>
@@ -275,30 +267,28 @@ export default function Home() {
               <Link href="/start-presenting">
                 <button style={{
                   padding: '16px 36px',
-                  background: 'rgba(255,255,255,0.1)',
+                  background: 'linear-gradient(135deg, #64748b 0%, #7c3aed 100%)',
                   color: 'white',
-                  border: '2px solid rgba(255,255,255,0.4)',
-                  borderRadius: '28px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderRadius: '20px',
                   fontSize: '18px',
                   fontWeight: '700',
                   cursor: 'pointer',
                   transition: 'all 0.4s',
                   backdropFilter: 'blur(10px)',
-                  boxShadow: '0 8px 24px rgba(255,255,255,0.1)',
+                  boxShadow: '0 8px 32px rgba(124, 58, 237, 0.4), inset 0 -2px 10px rgba(0,0,0,0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
                   textShadow: '0 2px 4px rgba(0,0,0,0.3)'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
                   e.currentTarget.style.transform = 'translateY(-4px) scale(1.03)';
-                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(255,255,255,0.2)';
+                  e.currentTarget.style.boxShadow = '0 12px 40px rgba(124, 58, 237, 0.6), inset 0 -2px 10px rgba(0,0,0,0.2)';
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
                   e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(255,255,255,0.1)';
+                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(124, 58, 237, 0.4), inset 0 -2px 10px rgba(0,0,0,0.2)';
                 }}
                 >
                   <span style={{ fontSize: '24px' }}>🌙</span>
@@ -306,87 +296,8 @@ export default function Home() {
                 </button>
               </Link>
             </div>
-
-            {/* Features Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '24px',
-              maxWidth: '1000px',
-              margin: '0 auto'
-            }}>
-              {[
-                { icon: '☄️', title: 'Stellar Uploads', desc: 'Upload PDF presentations instantly' },
-                { icon: '💫', title: 'Cosmic Q&A', desc: 'Real-time audience questions' },
-                { icon: '🌌', title: 'Live Engagement', desc: 'Interactive voting and feedback' },
-                { icon: '⭐', title: 'Session Codes', desc: 'Easy sharing with room codes' }
-              ].map((feature, index) => (
-                <div key={index} style={{
-                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
-                  backdropFilter: 'blur(15px)',
-                  borderRadius: '16px',
-                  padding: '28px 20px',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  transition: 'all 0.4s',
-                  boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.35) 0%, rgba(118, 75, 162, 0.35) 100%)';
-                  e.currentTarget.style.transform = 'translateY(-8px)';
-                  e.currentTarget.style.boxShadow = '0 12px 36px rgba(102, 126, 234, 0.4)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.3)';
-                }}
-                >
-                  <div style={{
-                    fontSize: '48px',
-                    marginBottom: '14px',
-                    filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.5))',
-                    animation: `floatIcon ${3 + index * 0.5}s ease-in-out infinite`
-                  }}>
-                    {feature.icon}
-                  </div>
-                  <h3 style={{
-                    color: 'white',
-                    fontSize: '18px',
-                    fontWeight: '700',
-                    marginBottom: '10px',
-                    textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
-                  }}>
-                    {feature.title}
-                  </h3>
-                  <p style={{
-                    color: 'rgba(255,255,255,0.85)',
-                    fontSize: '14px',
-                    lineHeight: '1.5'
-                  }}>
-                    {feature.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
           </div>
         </main>
-
-        {/* Footer */}
-        <footer style={{
-          padding: '30px 40px',
-          borderTop: '1px solid rgba(255,255,255,0.15)',
-          backdropFilter: 'blur(10px)',
-          background: 'rgba(255,255,255,0.03)',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            color: 'rgba(255,255,255,0.7)',
-            fontSize: '14px',
-            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-          }}>
-            © 2025 PromptDeck • Made with 🌟 for stellar presentations
-          </div>
-        </footer>
       </div>
 
       <style jsx global>{`
@@ -421,29 +332,6 @@ export default function Home() {
           }
           75% {
             transform: translateY(-15px) translateX(5px);
-          }
-        }
-        
-        @keyframes titlePulse {
-          0%, 100% {
-            text-shadow: 0 0 40px rgba(147, 112, 219, 0.8), 0 0 80px rgba(138, 43, 226, 0.4);
-            transform: scale(1);
-          }
-          50% {
-            text-shadow: 0 0 60px rgba(147, 112, 219, 1), 0 0 120px rgba(138, 43, 226, 0.6);
-            transform: scale(1.02);
-          }
-        }
-        
-        @keyframes floatIcon {
-          0%, 100% {
-            transform: translateY(0) rotate(0deg);
-          }
-          25% {
-            transform: translateY(-10px) rotate(5deg);
-          }
-          75% {
-            transform: translateY(-5px) rotate(-5deg);
           }
         }
         

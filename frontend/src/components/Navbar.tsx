@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../app/context/AuthContext";
+import { StarLogo } from "./StarLogo";
 
 export default function Navbar() {
   const router = useRouter();
@@ -20,12 +21,15 @@ export default function Navbar() {
   return (
     <nav style={{
       padding: '20px 40px',
+      margin: '20px 40px',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backdropFilter: 'blur(10px)',
-      background: 'rgba(255,255,255,0.05)',
-      borderBottom: '1px solid rgba(255,255,255,0.1)'
+      backdropFilter: 'blur(20px)',
+      background: 'rgba(255,255,255,0.08)',
+      border: '1px solid rgba(255,255,255,0.15)',
+      borderRadius: '20px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
     }}>
       <Link href="/" style={{ textDecoration: 'none' }}>
         <div style={{
@@ -35,10 +39,10 @@ export default function Navbar() {
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
+          textShadow: '0 0 20px rgba(251, 191, 36, 0.5)',
           cursor: 'pointer'
         }}>
-          <span style={{ fontSize: '36px' }}>🌟</span>
+          <StarLogo size={36} />
           <span>PromptDeck</span>
         </div>
       </Link>
