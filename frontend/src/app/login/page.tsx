@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
-import Navbar from "../../components/Navbar";
 import Login from "../../components/Login";
 
 export default function LoginPage() {
@@ -19,11 +18,30 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid rgba(147, 112, 219, 0.3)',
+            borderTopColor: '#9370db',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <p style={{ color: 'rgba(255,255,255,0.8)' }}>Loading...</p>
         </div>
+        <style jsx global>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -33,13 +51,71 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
-      <div className="max-w-md mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <Login />
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+      padding: '20px',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Stars Background */}
+      <div style={{
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        background: `
+          radial-gradient(2px 2px at 20% 30%, white, transparent),
+          radial-gradient(2px 2px at 60% 70%, white, transparent),
+          radial-gradient(1px 1px at 50% 50%, white, transparent),
+          radial-gradient(1px 1px at 80% 10%, white, transparent)
+        `,
+        backgroundSize: '200px 200px',
+        opacity: 0.5,
+        pointerEvents: 'none'
+      }} />
+
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '24px',
+        padding: '50px',
+        maxWidth: '480px',
+        width: '100%',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 100px rgba(147, 112, 219, 0.3)',
+        border: '1px solid rgba(255,255,255,0.2)',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '35px' }}>
+          <div style={{ fontSize: '64px', marginBottom: '15px' }}>🌟</div>
+          <h1 style={{
+            color: 'white',
+            marginBottom: '12px',
+            fontSize: '36px',
+            textShadow: '0 0 30px rgba(147, 112, 219, 0.8)'
+          }}>
+            Welcome to the Cosmos
+          </h1>
+          <p style={{
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: '16px',
+            textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+          }}>
+            Begin your stellar presentation journey
+          </p>
         </div>
+
+        <Login />
       </div>
+
+      <style jsx global>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

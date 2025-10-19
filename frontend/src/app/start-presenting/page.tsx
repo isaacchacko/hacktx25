@@ -42,7 +42,7 @@ export default function StartPresentingPage() {
       setError("Please enter a room code");
       return;
     }
-    
+
     router.push(`/${joinCode.trim()}`);
   };
 
@@ -52,112 +52,388 @@ export default function StartPresentingPage() {
     }
   };
 
-  // Remove authentication requirement - allow anonymous users
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+      padding: '20px',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Stars Background */}
+      <div style={{
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        background: `
+          radial-gradient(2px 2px at 20% 30%, white, transparent),
+          radial-gradient(2px 2px at 60% 70%, white, transparent),
+          radial-gradient(1px 1px at 50% 50%, white, transparent),
+          radial-gradient(1px 1px at 80% 10%, white, transparent)
+        `,
+        backgroundSize: '200px 200px',
+        opacity: 0.5,
+        pointerEvents: 'none'
+      }} />
+
+      <div style={{ maxWidth: '550px', width: '100%', position: 'relative', zIndex: 1 }}>
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            Q&A Room
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{
+            fontSize: '64px',
+            marginBottom: '16px',
+            filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.5))'
+          }}>
+            💫
+          </div>
+          <h1 style={{
+            fontSize: '40px',
+            fontWeight: 'bold',
+            color: 'white',
+            marginBottom: '12px',
+            textShadow: '0 0 30px rgba(147, 112, 219, 0.8)'
+          }}>
+            Cosmic Q&A Room
           </h1>
-          <p className="text-gray-600">
+          <p style={{
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: '17px',
+            textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+            marginBottom: '8px'
+          }}>
             Create or join a room to start asking questions
           </p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    {isAnonymous ? 'Anonymous user' : `Signed in as: ${user?.email}`}
-                  </p>
+          <p style={{
+            fontSize: '14px',
+            color: 'rgba(255,255,255,0.6)',
+            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+          }}>
+            {isAnonymous ? '🌙 Anonymous user' : `✨ Signed in as: ${user?.email}`}
+          </p>
         </div>
 
         {/* Connection Status */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Connection</h2>
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-sm text-gray-600">
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '16px',
+          padding: '24px',
+          marginBottom: '24px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          border: '1px solid rgba(255,255,255,0.2)'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: !isConnected ? '16px' : '0'
+          }}>
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: 'white',
+              textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+            }}>
+              Connection
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                background: isConnected ? '#10b981' : '#ef4444',
+                boxShadow: isConnected
+                  ? '0 0 10px rgba(16, 185, 129, 0.8)'
+                  : '0 0 10px rgba(239, 68, 68, 0.8)'
+              }} />
+              <span style={{
+                fontSize: '14px',
+                color: 'rgba(255,255,255,0.9)',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+              }}>
                 {isConnected ? 'Connected' : 'Disconnected'}
               </span>
             </div>
           </div>
-          
+
           {!isConnected && (
-            <p className="text-sm text-gray-600">
-              Connecting to server...
+            <p style={{
+              fontSize: '14px',
+              color: 'rgba(255,255,255,0.7)',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+            }}>
+              Connecting to stellar server...
             </p>
           )}
         </div>
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%)',
+            border: '2px solid rgba(239, 68, 68, 0.5)',
+            color: 'rgba(255, 150, 150, 0.95)',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            marginBottom: '24px',
+            backdropFilter: 'blur(10px)',
+            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+          }}>
             {error}
           </div>
         )}
 
         {/* Room Actions */}
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Create Room */}
-          <div className={`bg-gradient-to-r ${isAnonymous ? 'from-gray-50 to-gray-100 border-2 border-gray-200' : 'from-purple-50 to-purple-100 border-2 border-purple-200'} rounded-lg shadow-md p-6`}>
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className={`text-lg font-semibold ${isAnonymous ? 'text-gray-800' : 'text-purple-800'}`}>Create New Room</h3>
-              <span className={`px-2 py-1 rounded text-sm font-medium ${isAnonymous ? 'bg-gray-200 text-gray-700' : 'bg-purple-200 text-purple-700'}`}>🎤 PRESENTER</span>
+          <div style={{
+            background: isAnonymous
+              ? 'linear-gradient(135deg, rgba(75, 85, 99, 0.2) 0%, rgba(55, 65, 81, 0.2) 100%)'
+              : 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '16px',
+            padding: '28px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            border: `2px solid ${isAnonymous ? 'rgba(156, 163, 175, 0.3)' : 'rgba(139, 92, 246, 0.4)'}`
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '16px'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: 'white',
+                textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+              }}>
+                Create New Room
+              </h3>
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: '600',
+                background: isAnonymous
+                  ? 'rgba(156, 163, 175, 0.3)'
+                  : 'rgba(139, 92, 246, 0.3)',
+                color: 'rgba(255,255,255,0.9)',
+                border: `1px solid ${isAnonymous ? 'rgba(156, 163, 175, 0.5)' : 'rgba(139, 92, 246, 0.5)'}`,
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+              }}>
+                🎤 PRESENTER
+              </span>
             </div>
-            <p className={`text-sm mb-4 ${isAnonymous ? 'text-gray-700' : 'text-purple-700'}`}>
-              {isAnonymous 
+            <p style={{
+              fontSize: '14px',
+              marginBottom: '20px',
+              color: 'rgba(255,255,255,0.8)',
+              lineHeight: '1.6',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+            }}>
+              {isAnonymous
                 ? "Sign in to create rooms and become a presenter. You'll be able to mark questions as answered and manage Q&A sessions."
                 : "Create a new room and become the presenter. You'll be able to mark questions as answered and manage the Q&A session."
               }
             </p>
             {isAnonymous ? (
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <button
                   disabled={true}
-                  className="w-full px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed transition-colors"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: 'rgba(100,100,100,0.3)',
+                    color: 'rgba(255,255,255,0.5)',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    borderRadius: '12px',
+                    cursor: 'not-allowed',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                  }}
                 >
                   Sign In Required
                 </button>
-                <a 
-                  href="/" 
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block text-center"
+                <a
+                  href="/login"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    textDecoration: 'none',
+                    display: 'block',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    transition: 'all 0.3s',
+                    boxShadow: '0 4px 15px rgba(147, 112, 219, 0.4)',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(147, 112, 219, 0.6)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(147, 112, 219, 0.4)';
+                  }}
                 >
-                  Go to Sign In
+                  ✨ Go to Sign In
                 </a>
               </div>
             ) : (
               <button
                 onClick={handleCreateRoom}
                 disabled={!isConnected || isCreatingRoom}
-                className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  background: (!isConnected || isCreatingRoom)
+                    ? 'rgba(100,100,100,0.3)'
+                    : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderRadius: '12px',
+                  cursor: (!isConnected || isCreatingRoom) ? 'not-allowed' : 'pointer',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  transition: 'all 0.3s',
+                  boxShadow: (!isConnected || isCreatingRoom)
+                    ? 'none'
+                    : '0 4px 15px rgba(16, 185, 129, 0.4)',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  opacity: (!isConnected || isCreatingRoom) ? 0.5 : 1
+                }}
+                onMouseOver={(e) => {
+                  if (isConnected && !isCreatingRoom) {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.6)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (isConnected && !isCreatingRoom) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.4)';
+                  }
+                }}
               >
-                {isCreatingRoom ? "Creating Room..." : "Create Room"}
+                {isCreatingRoom ? "🚀 Creating Room..." : "🌟 Create Room"}
               </button>
             )}
           </div>
 
           {/* Join Room */}
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-lg shadow-md p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-lg font-semibold text-blue-800">Join Existing Room</h3>
-              <span className="bg-blue-200 text-blue-700 px-2 py-1 rounded text-sm font-medium">👥 ATTENDEE</span>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '16px',
+            padding: '28px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            border: '2px solid rgba(59, 130, 246, 0.4)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '16px'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: 'white',
+                textShadow: '0 2px 10px rgba(59, 130, 246, 0.6)'
+              }}>
+                Join Existing Room
+              </h3>
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: '600',
+                background: 'rgba(59, 130, 246, 0.3)',
+                color: 'rgba(255,255,255,0.9)',
+                border: '1px solid rgba(59, 130, 246, 0.5)',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+              }}>
+                👥 ATTENDEE
+              </span>
             </div>
-            <p className="text-sm text-blue-700 mb-4">
+            <p style={{
+              fontSize: '14px',
+              color: 'rgba(255,255,255,0.8)',
+              marginBottom: '20px',
+              lineHeight: '1.6',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+            }}>
               Enter a room code to join as a participant. You can ask questions and vote on unanswered questions.
             </p>
-            <div className="flex gap-2">
+            <div style={{ display: 'flex', gap: '12px' }}>
               <input
                 type="text"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value)}
                 onKeyPress={handleJoinKeyPress}
                 placeholder="Enter room code..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  background: 'rgba(255,255,255,0.08)',
+                  color: 'white',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s',
+                  outline: 'none'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.8)';
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.3)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
               <button
                 onClick={joinRoom}
                 disabled={!joinCode.trim()}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                style={{
+                  padding: '12px 24px',
+                  background: joinCode.trim()
+                    ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                    : 'rgba(100,100,100,0.3)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderRadius: '12px',
+                  cursor: joinCode.trim() ? 'pointer' : 'not-allowed',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  transition: 'all 0.3s',
+                  boxShadow: joinCode.trim() ? '0 4px 15px rgba(59, 130, 246, 0.4)' : 'none',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  opacity: !joinCode.trim() ? 0.5 : 1
+                }}
+                onMouseOver={(e) => {
+                  if (joinCode.trim()) {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.6)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (joinCode.trim()) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.4)';
+                  }
+                }}
               >
                 Join
               </button>
@@ -166,24 +442,81 @@ export default function StartPresentingPage() {
         </div>
 
         {/* Features */}
-        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Features</h3>
-          <ul className="text-sm text-gray-600 space-y-2">
-            <li className="flex items-center gap-2">
-              <span className="text-green-500">✓</span>
-              Real-time question posting and voting
+        <div style={{
+          marginTop: '32px',
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '16px',
+          padding: '24px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          border: '1px solid rgba(255,255,255,0.2)'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: 'white',
+            marginBottom: '16px',
+            textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+          }}>
+            ✨ Stellar Features
+          </h3>
+          <ul style={{
+            fontSize: '14px',
+            color: 'rgba(255,255,255,0.85)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            listStyle: 'none',
+            padding: 0,
+            margin: 0
+          }}>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                color: '#10b981',
+                fontSize: '16px',
+                textShadow: '0 0 10px rgba(16, 185, 129, 0.6)'
+              }}>
+                ✓
+              </span>
+              <span style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                Real-time question posting and voting
+              </span>
             </li>
-            <li className="flex items-center gap-2">
-              <span className="text-green-500">✓</span>
-              Questions persist even when users leave
+            <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                color: '#10b981',
+                fontSize: '16px',
+                textShadow: '0 0 10px rgba(16, 185, 129, 0.6)'
+              }}>
+                ✓
+              </span>
+              <span style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                Questions persist even when users leave
+              </span>
             </li>
-            <li className="flex items-center gap-2">
-              <span className="text-green-500">✓</span>
-              Presenter can mark questions as answered
+            <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                color: '#10b981',
+                fontSize: '16px',
+                textShadow: '0 0 10px rgba(16, 185, 129, 0.6)'
+              }}>
+                ✓
+              </span>
+              <span style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                Presenter can mark questions as answered
+              </span>
             </li>
-            <li className="flex items-center gap-2">
-              <span className="text-green-500">✓</span>
-              Questions sorted by popularity
+            <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                color: '#10b981',
+                fontSize: '16px',
+                textShadow: '0 0 10px rgba(16, 185, 129, 0.6)'
+              }}>
+                ✓
+              </span>
+              <span style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                Questions sorted by popularity
+              </span>
             </li>
           </ul>
         </div>

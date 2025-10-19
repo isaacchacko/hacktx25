@@ -7,48 +7,141 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
 
   return (
-    <nav className="bg-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Left side - Navigation Links */}
-          <div className="flex space-x-8">
-            <Link
-              href="/"
-              className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              href="/upload"
-              className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              Upload PDF
-            </Link>
-          </div>
+    <nav style={{
+      padding: '20px 40px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backdropFilter: 'blur(10px)',
+      background: 'rgba(255,255,255,0.05)',
+      borderBottom: '1px solid rgba(255,255,255,0.1)'
+    }}>
+      <Link href="/" style={{ textDecoration: 'none' }}>
+        <div style={{
+          color: 'white',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
+          cursor: 'pointer'
+        }}>
+          <span style={{ fontSize: '36px' }}>🌟</span>
+          <span>PromptDeck</span>
+        </div>
+      </Link>
 
-          {/* Right side - Auth */}
-          <div className="flex items-center space-x-4">
-            {user ? (
-              <>
-                <span className="text-sm text-gray-600">
-                  Welcome, {user.displayName || user.email}!
-                </span>
-                <button
-                  onClick={signOut}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <Link
-                href="/login"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <Link
+          href="/"
+          style={{
+            color: 'rgba(255,255,255,0.8)',
+            textDecoration: 'none',
+            fontSize: '16px',
+            fontWeight: '500',
+            transition: 'all 0.3s',
+            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.color = 'white';
+            e.currentTarget.style.textShadow = '0 0 15px rgba(147, 112, 219, 0.8)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
+            e.currentTarget.style.textShadow = '0 2px 4px rgba(0,0,0,0.5)';
+          }}
+        >
+          Home
+        </Link>
+
+        <Link
+          href="/upload"
+          style={{
+            color: 'rgba(255,255,255,0.8)',
+            textDecoration: 'none',
+            fontSize: '16px',
+            fontWeight: '500',
+            transition: 'all 0.3s',
+            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.color = 'white';
+            e.currentTarget.style.textShadow = '0 0 15px rgba(147, 112, 219, 0.8)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
+            e.currentTarget.style.textShadow = '0 2px 4px rgba(0,0,0,0.5)';
+          }}
+        >
+          Upload PDF
+        </Link>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {user ? (
+            <>
+              <span style={{
+                color: 'rgba(255,255,255,0.8)',
+                fontSize: '14px',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+              }}>
+                {user.displayName || user.email}
+              </span>
+              <button
+                onClick={signOut}
+                style={{
+                  padding: '10px 24px',
+                  background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s',
+                  boxShadow: '0 4px 15px rgba(220, 53, 69, 0.4)',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(220, 53, 69, 0.6)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(220, 53, 69, 0.4)';
+                }}
               >
-                Login
-              </Link>
-            )}
-          </div>
+                Logout
+              </button>
+            </>
+          ) : (
+            <Link href="/login">
+              <button style={{
+                padding: '12px 28px',
+                background: 'linear-gradient(135deg, #667eea 0%, #9370db 100%)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '25px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                boxShadow: '0 4px 20px rgba(147, 112, 219, 0.4)',
+                textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 6px 30px rgba(147, 112, 219, 0.6)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(147, 112, 219, 0.4)';
+              }}
+              >
+                ✨ Sign In
+              </button>
+            </Link>
+          )}
         </div>
       </div>
     </nav>

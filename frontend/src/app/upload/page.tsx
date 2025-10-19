@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
-import Navbar from "../../components/Navbar";
 import PDFPresentationDemo from "../../components/PDFPresentationDemo";
 
 export default function UploadPage() {
@@ -10,44 +9,235 @@ export default function UploadPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid rgba(147, 112, 219, 0.3)',
+            borderTopColor: '#9370db',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <p style={{ color: 'rgba(255,255,255,0.8)' }}>Loading...</p>
         </div>
+        <style jsx global>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-100">
-        <Navbar />
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <div className="bg-white rounded-lg shadow-md p-8">
-            <div className="text-6xl mb-4">🔒</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Authentication Required
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Please sign in to upload and view PDF presentations.
-            </p>
-            <Link
-              href="/login"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-            >
-              Sign In
-            </Link>
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        {/* Stars Background */}
+        <div style={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          background: `
+            radial-gradient(2px 2px at 20% 30%, white, transparent),
+            radial-gradient(2px 2px at 60% 70%, white, transparent),
+            radial-gradient(1px 1px at 50% 50%, white, transparent),
+            radial-gradient(1px 1px at 80% 10%, white, transparent)
+          `,
+          backgroundSize: '200px 200px',
+          opacity: 0.5,
+          pointerEvents: 'none'
+        }} />
+
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          padding: '50px',
+          maxWidth: '480px',
+          width: '100%',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 100px rgba(147, 112, 219, 0.3)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          position: 'relative',
+          zIndex: 1,
+          textAlign: 'center'
+        }}>
+          <div style={{
+            fontSize: '80px',
+            marginBottom: '24px',
+            filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.5))'
+          }}>
+            🔒
           </div>
+          <h2 style={{
+            color: 'white',
+            fontSize: '32px',
+            fontWeight: 'bold',
+            marginBottom: '16px',
+            textShadow: '0 0 30px rgba(147, 112, 219, 0.8)'
+          }}>
+            Stellar Access Required
+          </h2>
+          <p style={{
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: '16px',
+            marginBottom: '32px',
+            lineHeight: '1.6',
+            textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+          }}>
+            Please sign in to upload PDF presentations and launch them among the stars
+          </p>
+          <Link href="/login">
+            <button style={{
+              width: '100%',
+              padding: '16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: '2px solid rgba(255,255,255,0.3)',
+              borderRadius: '12px',
+              fontSize: '17px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              boxShadow: '0 6px 25px rgba(147, 112, 219, 0.5)',
+              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.boxShadow = '0 10px 35px rgba(147, 112, 219, 0.6)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 6px 25px rgba(147, 112, 219, 0.5)';
+            }}
+            >
+              ✨ Sign In to Continue
+            </button>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
-      <PDFPresentationDemo />
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Stars Background */}
+      <div style={{
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        background: `
+          radial-gradient(2px 2px at 20% 30%, white, transparent),
+          radial-gradient(2px 2px at 60% 70%, white, transparent),
+          radial-gradient(1px 1px at 50% 50%, white, transparent),
+          radial-gradient(1px 1px at 80% 10%, white, transparent),
+          radial-gradient(2px 2px at 90% 60%, white, transparent)
+        `,
+        backgroundSize: '200px 200px, 300px 300px, 250px 250px, 280px 280px, 320px 320px',
+        animation: 'twinkle 3s ease-in-out infinite alternate',
+        pointerEvents: 'none',
+        opacity: 0.5
+      }} />
+
+      {/* Navbar */}
+      <header style={{
+        padding: '20px 40px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backdropFilter: 'blur(10px)',
+        background: 'rgba(255,255,255,0.05)',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        position: 'relative',
+        zIndex: 10
+      }}>
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <div style={{
+            color: 'white',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
+            cursor: 'pointer'
+          }}>
+            <span style={{ fontSize: '36px' }}>🌟</span>
+            <span>PromptDeck</span>
+          </div>
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: '14px',
+            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+          }}>
+            Welcome, {user.displayName || user.email}
+          </span>
+          <Link href="/">
+            <button style={{
+              padding: '10px 24px',
+              background: 'rgba(255,255,255,0.1)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              backdropFilter: 'blur(10px)',
+              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(255,255,255,0.2)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+            >
+              ← Back to Home
+            </button>
+          </Link>
+        </div>
+      </header>
+
+      {/* PDF Upload Component */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <PDFPresentationDemo />
+      </div>
+
+      <style jsx global>{`
+        @keyframes twinkle {
+          0% { opacity: 0.3; }
+          100% { opacity: 0.7; }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
