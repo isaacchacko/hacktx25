@@ -61,6 +61,19 @@ interface Question {
   answered: boolean;
 }
 
+interface TranscriptionResult {
+  text: string;
+  confidence: number;
+  timestamp: number;
+}
+
+interface PageTranscription {
+  pageNumber: number;
+  transcriptions: TranscriptionResult[];
+  startTime: number;
+  endTime?: number;
+}
+
 export default function JoinRoomPage() {
   const params = useParams();
   const router = useRouter();
@@ -91,6 +104,11 @@ export default function JoinRoomPage() {
   // PDF page tracking for presenter
   const [presenterCurrentPage, setPresenterCurrentPage] = useState<number>(1);
 
+  // Page-based transcription state
+  const [transcriptionsByPage, setTranscriptionsByPage] = useState<{ [pageNumber: number]: PageTranscription }>({});
+  const [viewByPage, setViewByPage] = useState(false); // Toggle between views
+  const [isInitialized, setIsInitialized] = useState(false);
+  
   // Debug logging for presenter current page changes
   useEffect(() => {
     console.log('📄 Presenter current page updated to:', presenterCurrentPage);
@@ -112,7 +130,19 @@ export default function JoinRoomPage() {
     } else {
       console.log('❌ No PDF URL found in localStorage');
     }
-  }, []);
+    
+    // Initialize page 1 for transcriptions
+    if (!isInitialized) {
+      setTranscriptionsByPage({
+        1: {
+          pageNumber: 1,
+          transcriptions: [],
+          startTime: Date.now()
+        }
+      });
+      setIsInitialized(true);
+    }
+  }, [isInitialized]);
 
   useEffect(() => {
     if (socket && isConnected && currentRoom !== joinCode) {
@@ -287,7 +317,7 @@ export default function JoinRoomPage() {
   };
 
   // Handle transcription updates from voice recording
-  const handleTranscriptionUpdate = (transcription: string, history: Array<{
+  const handleTranscriptionUpdate = useCallback((transcription: string, history: Array<{
     text: string;
     confidence: number;
     timestamp: number;
@@ -296,21 +326,69 @@ export default function JoinRoomPage() {
     setLiveTranscription(transcription);
     setTranscriptionHistory(history);
 
+    
+    // Add new transcriptions to current page
+    if (history.length > 0) {
+      // Get all existing transcriptions across all pages to avoid duplicates
+      const allExistingTimestamps = new Set();
+      Object.values(transcriptionsByPage).forEach(pageData => {
+        pageData.transcriptions.forEach(t => allExistingTimestamps.add(t.timestamp));
+      });
+      
+      // Filter out transcriptions that already exist in any page
+      const newTranscriptions = history.filter(t => !allExistingTimestamps.has(t.timestamp));
+      
+      if (newTranscriptions.length > 0) {
+        setTranscriptionsByPage(prev => ({
+          ...prev,
+          [currentPage]: {
+            ...prev[currentPage],
+            pageNumber: currentPage,
+            startTime: prev[currentPage]?.startTime || Date.now(),
+            transcriptions: [...(prev[currentPage]?.transcriptions || []), ...newTranscriptions]
+          }
+        }));
+      }
+    }
+    
     // Broadcast transcription to other users in the room
     if (socket && transcription) {
       socket.emit('transcription-update', {
         joinCode,
         transcription,
-        history
+        history,
+        currentPage,
+        transcriptionsByPage
       });
     }
-  };
+  }, [transcriptionsByPage, currentPage, socket, joinCode]);
 
   // PDF-related handlers
   const handlePageChange = useCallback((page: number) => {
     console.log('📄 Page changed to:', page);
+    
+    // Finalize previous page's transcription
+    if (currentPage !== page && transcriptionsByPage[currentPage]) {
+      setTranscriptionsByPage(prev => ({
+        ...prev,
+        [currentPage]: {
+          ...prev[currentPage],
+          endTime: Date.now()
+        }
+      }));
+    }
+    
     setCurrentPage(page);
-
+    // Initialize new page transcription if it doesn't exist
+    setTranscriptionsByPage(prev => ({
+      ...prev,
+      [page]: prev[page] || {
+        pageNumber: page,
+        transcriptions: [],
+        startTime: Date.now()
+      }
+    }));
+    
     // If user is presenter, emit page change to socket server
     if (isPresenter && socket) {
       console.log('📄 Presenter changing page to:', page, 'emitting to socket server');
@@ -319,7 +397,7 @@ export default function JoinRoomPage() {
         joinCode: joinCode
       });
     }
-  }, [isPresenter, socket, joinCode]);
+  }, [currentPage, transcriptionsByPage, isPresenter, socket, joinCode]);
 
   const handleTotalPagesChange = useCallback((pages: number) => {
     console.log('📄 Total pages:', pages);
@@ -688,6 +766,11 @@ export default function JoinRoomPage() {
                 isTranscribing={false} // This will be managed by the VoiceRecordingControls
                 isCollapsed={isTranscriptionCollapsed}
                 onToggleCollapse={() => setIsTranscriptionCollapsed(!isTranscriptionCollapsed)}
+                transcriptionsByPage={transcriptionsByPage}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                viewByPage={viewByPage}
+                onToggleView={() => setViewByPage(!viewByPage)}
               />
             )}
 
@@ -883,7 +966,6 @@ export default function JoinRoomPage() {
                                     style={{
                                       padding: '8px 12px',
                                       borderRadius: '8px',
-                                      border: 'none',
                                       fontWeight: '500',
                                       fontSize: '14px',
                                       cursor: (!isConnected || question.answered) ? 'not-allowed' : 'pointer',
@@ -925,7 +1007,6 @@ export default function JoinRoomPage() {
                                     style={{
                                       padding: '8px 12px',
                                       borderRadius: '8px',
-                                      border: 'none',
                                       fontWeight: '500',
                                       fontSize: '14px',
                                       cursor: (!isConnected || question.answered) ? 'not-allowed' : 'pointer',
