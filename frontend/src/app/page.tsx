@@ -70,11 +70,11 @@ export default function Home() {
           mouseRepulsion={true}
           mouseInteraction={true}
           density={1}
-          glowIntensity={0.3}
-          saturation={0}
-          hueShift={200}
+          glowIntensity={0.25}
+          saturation={.7}
+          hueShift={140}
           transparent={false}
-          speed={1.0}
+          speed={.5}
           twinkleIntensity={0.3}
           rotationSpeed={0.1}
           repulsionStrength={2}

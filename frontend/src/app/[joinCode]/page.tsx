@@ -453,56 +453,47 @@ export default function JoinRoomPage() {
           <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
             {/* Header */}
             <div style={{
-              background: isPresenter
-                ? 'linear-gradient(135deg, rgba(147, 112, 219, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)'
-                : 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
-              backdropFilter: 'blur(15px)',
-              borderRadius: '16px',
-              padding: '24px',
-              marginBottom: '24px',
-              border: isPresenter
-                ? '2px solid rgba(147, 112, 219, 0.3)'
-                : '2px solid rgba(102, 126, 234, 0.3)',
-              boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
+              background: 'rgba(255,255,255,0.04)',
+              borderRadius: '12px',
+              padding: '28px',
+              marginBottom: '32px',
+              border: '1px solid rgba(255,255,255,0.08)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <h1 style={{
                   color: 'white',
-                  fontSize: '32px',
-                  fontWeight: 'bold',
+                  fontSize: '28px',
+                  fontWeight: '600',
                   margin: 0,
-                  textShadow: '0 0 20px rgba(147, 112, 219, 0.8)'
+                  letterSpacing: '-0.02em'
                 }}>
-                  Room: {joinCode}
+                  Room {joinCode}
                 </h1>
                 <div style={{
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  background: isPresenter
-                    ? 'linear-gradient(135deg, #9370db 0%, #8a2be2 100%)'
-                    : 'linear-gradient(135deg, #667eea 0%, #9370db 100%)',
-                  color: 'white',
-                  boxShadow: '0 4px 15px rgba(147, 112, 219, 0.4)'
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  background: 'rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.9)',
+                  border: '1px solid rgba(255,255,255,0.12)'
                 }}>
-                  {isPresenter ? '🎤 PRESENTER' : '👥 ATTENDEE'}
+                  {isPresenter ? 'Presenter' : 'Participant'}
                 </div>
               </div>
 
               {/* Connection Status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <div style={{
-                  width: '12px',
-                  height: '12px',
+                  width: '8px',
+                  height: '8px',
                   borderRadius: '50%',
-                  background: isConnected ? '#28a745' : '#dc3545',
-                  boxShadow: `0 0 10px ${isConnected ? '#28a745' : '#dc3545'}`
+                  background: isConnected ? '#6ee7b7' : '#fca5a5'
                 }}></div>
-                <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
                   {isConnected ? 'Connected' : 'Disconnected'}
                 </span>
-                <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
                   • {isAnonymous ? 'Anonymous user' : `Signed in as ${user?.email}`}
                 </span>
               </div>
@@ -570,23 +561,21 @@ export default function JoinRoomPage() {
             {/* PDF Viewer Section */}
             {pdfUrl && (
               <div style={{
-                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
-                backdropFilter: 'blur(15px)',
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '24px',
-                border: '1px solid rgba(255,255,255,0.2)',
-                boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '12px',
+                padding: '28px',
+                marginBottom: '32px',
+                border: '1px solid rgba(255,255,255,0.06)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                   <h3 style={{
                     fontSize: '18px',
                     fontWeight: '600',
                     color: 'white',
                     margin: 0,
-                    textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+                    letterSpacing: '-0.01em'
                   }}>
-                    📄 Presentation PDF
+                    Presentation PDF
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {/* Presenter Page Indicator - Only show for attendees */}
@@ -595,37 +584,34 @@ export default function JoinRoomPage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '6px 12px',
-                        background: 'rgba(147, 112, 219, 0.2)',
-                        border: '1px solid rgba(147, 112, 219, 0.3)',
-                        borderRadius: '20px',
-                        fontSize: '14px',
-                        color: 'white'
+                        padding: '4px 8px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        color: 'rgba(255,255,255,0.8)'
                       }}>
-                        <span style={{ fontSize: '12px', opacity: 0.8 }}>Presenter on:</span>
-                        <span style={{ fontWeight: '600' }}>Page {presenterCurrentPage}</span>
+                        <span style={{ fontSize: '11px', opacity: 0.7 }}>Presenter on:</span>
+                        <span style={{ fontWeight: '500' }}>Page {presenterCurrentPage}</span>
                         {currentPage !== presenterCurrentPage && (
                           <button
                             onClick={() => handlePageChange(presenterCurrentPage)}
                             style={{
-                              padding: '4px 8px',
-                              background: 'linear-gradient(135deg, #9370db 0%, #8a2be2 100%)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '12px',
-                              fontSize: '12px',
-                              fontWeight: '600',
+                              padding: '3px 6px',
+                              background: 'rgba(255,255,255,0.08)',
+                              color: 'rgba(255,255,255,0.9)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '500',
                               cursor: 'pointer',
-                              transition: 'all 0.3s',
-                              boxShadow: '0 2px 8px rgba(147, 112, 219, 0.4)'
+                              transition: 'all 0.2s'
                             }}
                             onMouseOver={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-1px)';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 112, 219, 0.6)';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
                             }}
                             onMouseOut={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(147, 112, 219, 0.4)';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
                             }}
                           >
                             Jump to Presenter
@@ -637,41 +623,43 @@ export default function JoinRoomPage() {
                     <button
                       onClick={togglePdfViewer}
                       style={{
-                        padding: '8px 16px',
+                        padding: '6px 12px',
                         background: showPdfViewer
-                          ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
-                          : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
+                          ? 'rgba(220, 53, 69, 0.1)'
+                          : 'rgba(40, 167, 69, 0.1)',
+                        color: showPdfViewer
+                          ? 'rgba(220, 53, 69, 0.9)'
+                          : 'rgba(40, 167, 69, 0.9)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: '500',
                         cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                        transition: 'all 0.2s'
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+                        e.currentTarget.style.background = showPdfViewer
+                          ? 'rgba(220, 53, 69, 0.15)'
+                          : 'rgba(40, 167, 69, 0.15)';
                       }}
                       onMouseOut={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+                        e.currentTarget.style.background = showPdfViewer
+                          ? 'rgba(220, 53, 69, 0.1)'
+                          : 'rgba(40, 167, 69, 0.1)';
                       }}
                     >
-                      {showPdfViewer ? '🔼 Hide PDF' : '🔽 Show PDF'}
+                      {showPdfViewer ? 'Hide PDF' : 'Show PDF'}
                     </button>
                   </div>
                 </div>
 
                 {showPdfViewer && (
                   <div style={{
-                    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-                    backdropFilter: 'blur(20px)',
-                    borderRadius: '12px',
+                    background: 'rgba(255,255,255,0.02)',
+                    borderRadius: '8px',
                     overflow: 'hidden',
                     height: '600px',
-                    border: '1px solid rgba(255,255,255,0.2)'
+                    border: '1px solid rgba(255,255,255,0.08)'
                   }}>
                     {/* PDF Toolbar */}
                     {totalPages > 0 && (
@@ -734,8 +722,7 @@ export default function JoinRoomPage() {
                     fontWeight: 'bold',
                     fontSize: '18px',
                     color: 'white',
-                    margin: '0 0 8px 0',
-                    textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+                    margin: '0 0 8px 0'
                   }}>
                     {isPresenter ? 'You are the PRESENTER' : 'You are an ATTENDEE'}
                   </h3>
@@ -791,50 +778,44 @@ export default function JoinRoomPage() {
 
             {/* Questions */}
             <div style={{
-              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-              backdropFilter: 'blur(15px)',
-              borderRadius: '16px',
-              padding: '24px',
-              marginBottom: '24px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              padding: '28px',
+              marginBottom: '32px',
+              border: '1px solid rgba(255,255,255,0.06)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <h2 style={{
-                  fontSize: '20px',
+                  fontSize: '18px',
                   fontWeight: '600',
                   color: 'white',
                   margin: 0,
-                  textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+                  letterSpacing: '-0.01em'
                 }}>Questions</h2>
                 <div style={{
-                  padding: '6px 12px',
-                  borderRadius: '20px',
-                  fontSize: '14px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
                   fontWeight: '500',
-                  background: isPresenter
-                    ? 'rgba(147, 112, 219, 0.2)'
-                    : 'rgba(102, 126, 234, 0.2)',
-                  color: 'white',
-                  border: isPresenter
-                    ? '1px solid rgba(147, 112, 219, 0.3)'
-                    : '1px solid rgba(102, 126, 234, 0.3)'
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(255,255,255,0.08)'
                 }}>
                   {isPresenter
-                    ? '🎤 You can mark questions as answered'
-                    : '👥 You can vote on unanswered questions'
+                    ? 'You can mark questions as answered'
+                    : 'You can vote on unanswered questions'
                   }
                 </div>
               </div>
               <div style={{
-                height: '384px',
+                height: '400px',
                 overflowY: 'auto',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '12px',
-                padding: '16px',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '8px',
+                padding: '20px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '12px'
+                gap: '16px'
               }}>
                 {questions.length === 0 ? (
                   <p style={{
@@ -854,72 +835,68 @@ export default function JoinRoomPage() {
                     })
                     .map((question) => (
                       <div key={question.id} style={{
-                        padding: '16px',
-                        borderRadius: '12px',
+                        padding: '20px',
+                        borderRadius: '8px',
                         background: question.answered
-                          ? 'linear-gradient(135deg, rgba(40, 167, 69, 0.2) 0%, rgba(32, 201, 151, 0.2) 100%)'
-                          : 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                          ? 'rgba(40, 167, 69, 0.08)'
+                          : 'rgba(255,255,255,0.02)',
                         border: question.answered
-                          ? '1px solid rgba(40, 167, 69, 0.3)'
-                          : '1px solid rgba(255,255,255,0.1)',
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+                          ? '1px solid rgba(40, 167, 69, 0.15)'
+                          : '1px solid rgba(255,255,255,0.06)'
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                           <div style={{ flex: 1 }}>
                             <p style={{
                               color: question.answered ? 'rgba(255,255,255,0.6)' : 'white',
                               textDecoration: question.answered ? 'line-through' : 'none',
-                              margin: '0 0 8px 0',
-                              fontSize: '16px',
-                              lineHeight: '1.5',
-                              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                              margin: '0 0 12px 0',
+                              fontSize: '15px',
+                              lineHeight: '1.5'
                             }}>
                               {question.text}
                             </p>
                             {question.answered && (
                               <span style={{
-                                color: '#28a745',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-                              }}>✓ Answered</span>
+                                color: '#6ee7b7',
+                                fontSize: '13px',
+                                fontWeight: '500'
+                              }}>Answered</span>
                             )}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '16px' }}>
                             {isPresenter ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {/* Voting buttons - disabled for presenter */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <button
                                     disabled={true}
                                     style={{
-                                      padding: '8px 12px',
-                                      background: 'rgba(255,255,255,0.1)',
+                                      padding: '6px 10px',
+                                      background: 'rgba(255,255,255,0.05)',
                                       color: 'rgba(255,255,255,0.4)',
-                                      borderRadius: '8px',
-                                      border: '1px solid rgba(255,255,255,0.2)',
+                                      borderRadius: '6px',
+                                      border: '1px solid rgba(255,255,255,0.08)',
                                       cursor: 'not-allowed',
                                       fontWeight: '500',
-                                      fontSize: '14px'
+                                      fontSize: '13px'
                                     }}
                                   >
-                                    👍 {question.upvotes}
+                                    {question.upvotes}
                                   </button>
                                   <button
                                     disabled={true}
                                     style={{
-                                      padding: '8px 12px',
-                                      background: 'rgba(255,255,255,0.1)',
+                                      padding: '6px 10px',
+                                      background: 'rgba(255,255,255,0.05)',
                                       color: 'rgba(255,255,255,0.4)',
-                                      borderRadius: '8px',
-                                      border: '1px solid rgba(255,255,255,0.2)',
+                                      borderRadius: '6px',
+                                      border: '1px solid rgba(255,255,255,0.08)',
                                       cursor: 'not-allowed',
                                       fontWeight: '500',
-                                      fontSize: '14px'
+                                      fontSize: '13px'
                                     }}
                                   >
-                                    👎 {question.downvotes}
+                                    {question.downvotes}
                                   </button>
                                 </div>
                                 {/* Mark as answered button */}
@@ -927,123 +904,114 @@ export default function JoinRoomPage() {
                                   onClick={() => markAsAnswered(question.id)}
                                   disabled={!isConnected}
                                   style={{
-                                    padding: '8px 16px',
-                                    fontSize: '14px',
+                                    padding: '6px 12px',
+                                    fontSize: '13px',
                                     fontWeight: '500',
-                                    borderRadius: '8px',
-                                    border: 'none',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(255,255,255,0.12)',
                                     cursor: isConnected ? 'pointer' : 'not-allowed',
                                     background: question.answered
-                                      ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
-                                      : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-                                    color: 'white',
-                                    transition: 'all 0.3s',
-                                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                                      ? 'rgba(239, 68, 68, 0.1)'
+                                      : 'rgba(40, 167, 69, 0.1)',
+                                    color: question.answered
+                                      ? 'rgba(239, 68, 68, 0.9)'
+                                      : 'rgba(40, 167, 69, 0.9)',
+                                    transition: 'all 0.2s',
                                     opacity: isConnected ? 1 : 0.5
                                   }}
                                   onMouseOver={(e) => {
                                     if (isConnected) {
-                                      e.currentTarget.style.transform = 'translateY(-2px)';
-                                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+                                      e.currentTarget.style.background = question.answered
+                                        ? 'rgba(239, 68, 68, 0.15)'
+                                        : 'rgba(40, 167, 69, 0.15)';
                                     }
                                   }}
                                   onMouseOut={(e) => {
                                     if (isConnected) {
-                                      e.currentTarget.style.transform = 'translateY(0)';
-                                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+                                      e.currentTarget.style.background = question.answered
+                                        ? 'rgba(239, 68, 68, 0.1)'
+                                        : 'rgba(40, 167, 69, 0.1)';
                                     }
                                   }}
                                 >
-                                  {question.answered ? '❌ Mark Unanswered' : '✅ Mark Answered'}
+                                  {question.answered ? 'Mark Unanswered' : 'Mark Answered'}
                                 </button>
                               </div>
                             ) : (() => {
                               const userVote = getUserVote(question);
                               return (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <button
                                     onClick={() => handleVote(question.id, userVote === "upvote" ? "remove" : "upvote")}
                                     disabled={!isConnected || question.answered}
                                     style={{
-                                      padding: '8px 12px',
-                                      borderRadius: '8px',
-                                      border: 'none',
+                                      padding: '6px 10px',
+                                      borderRadius: '6px',
+                                      border: '1px solid rgba(255,255,255,0.08)',
                                       fontWeight: '500',
-                                      fontSize: '14px',
+                                      fontSize: '13px',
                                       cursor: (!isConnected || question.answered) ? 'not-allowed' : 'pointer',
-                                      transition: 'all 0.3s',
+                                      transition: 'all 0.2s',
                                       background: userVote === "upvote"
-                                        ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
-                                        : 'rgba(40, 167, 69, 0.2)',
-                                      color: userVote === "upvote" ? 'white' : 'rgba(255,255,255,0.8)',
-                                      border: userVote === "upvote"
-                                        ? '1px solid rgba(40, 167, 69, 0.5)'
-                                        : '1px solid rgba(40, 167, 69, 0.3)',
-                                      opacity: (!isConnected || question.answered) ? 0.5 : 1,
-                                      boxShadow: userVote === "upvote"
-                                        ? '0 4px 15px rgba(40, 167, 69, 0.4)'
-                                        : '0 2px 8px rgba(0,0,0,0.2)'
+                                        ? 'rgba(40, 167, 69, 0.15)'
+                                        : 'rgba(255,255,255,0.05)',
+                                      color: userVote === "upvote" 
+                                        ? 'rgba(40, 167, 69, 0.9)' 
+                                        : 'rgba(255,255,255,0.7)',
+                                      opacity: (!isConnected || question.answered) ? 0.5 : 1
                                     }}
                                     onMouseOver={(e) => {
                                       if (isConnected && !question.answered) {
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = userVote === "upvote"
-                                          ? '0 6px 20px rgba(40, 167, 69, 0.6)'
-                                          : '0 4px 12px rgba(40, 167, 69, 0.4)';
+                                        e.currentTarget.style.background = userVote === "upvote"
+                                          ? 'rgba(40, 167, 69, 0.2)'
+                                          : 'rgba(255,255,255,0.08)';
                                       }
                                     }}
                                     onMouseOut={(e) => {
                                       if (isConnected && !question.answered) {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = userVote === "upvote"
-                                          ? '0 4px 15px rgba(40, 167, 69, 0.4)'
-                                          : '0 2px 8px rgba(0,0,0,0.2)';
+                                        e.currentTarget.style.background = userVote === "upvote"
+                                          ? 'rgba(40, 167, 69, 0.15)'
+                                          : 'rgba(255,255,255,0.05)';
                                       }
                                     }}
                                   >
-                                    👍 {question.upvotes}
+                                    {question.upvotes}
                                   </button>
                                   <button
                                     onClick={() => handleVote(question.id, userVote === "downvote" ? "remove" : "downvote")}
                                     disabled={!isConnected || question.answered}
                                     style={{
-                                      padding: '8px 12px',
-                                      borderRadius: '8px',
-                                      border: 'none',
+                                      padding: '6px 10px',
+                                      borderRadius: '6px',
+                                      border: '1px solid rgba(255,255,255,0.08)',
                                       fontWeight: '500',
-                                      fontSize: '14px',
+                                      fontSize: '13px',
                                       cursor: (!isConnected || question.answered) ? 'not-allowed' : 'pointer',
-                                      transition: 'all 0.3s',
+                                      transition: 'all 0.2s',
                                       background: userVote === "downvote"
-                                        ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
-                                        : 'rgba(220, 53, 69, 0.2)',
-                                      color: userVote === "downvote" ? 'white' : 'rgba(255,255,255,0.8)',
-                                      border: userVote === "downvote"
-                                        ? '1px solid rgba(220, 53, 69, 0.5)'
-                                        : '1px solid rgba(220, 53, 69, 0.3)',
-                                      opacity: (!isConnected || question.answered) ? 0.5 : 1,
-                                      boxShadow: userVote === "downvote"
-                                        ? '0 4px 15px rgba(220, 53, 69, 0.4)'
-                                        : '0 2px 8px rgba(0,0,0,0.2)'
+                                        ? 'rgba(220, 53, 69, 0.15)'
+                                        : 'rgba(255,255,255,0.05)',
+                                      color: userVote === "downvote" 
+                                        ? 'rgba(220, 53, 69, 0.9)' 
+                                        : 'rgba(255,255,255,0.7)',
+                                      opacity: (!isConnected || question.answered) ? 0.5 : 1
                                     }}
                                     onMouseOver={(e) => {
                                       if (isConnected && !question.answered) {
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = userVote === "downvote"
-                                          ? '0 6px 20px rgba(220, 53, 69, 0.6)'
-                                          : '0 4px 12px rgba(220, 53, 69, 0.4)';
+                                        e.currentTarget.style.background = userVote === "downvote"
+                                          ? 'rgba(220, 53, 69, 0.2)'
+                                          : 'rgba(255,255,255,0.08)';
                                       }
                                     }}
                                     onMouseOut={(e) => {
                                       if (isConnected && !question.answered) {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = userVote === "downvote"
-                                          ? '0 4px 15px rgba(220, 53, 69, 0.4)'
-                                          : '0 2px 8px rgba(0,0,0,0.2)';
+                                        e.currentTarget.style.background = userVote === "downvote"
+                                          ? 'rgba(220, 53, 69, 0.15)'
+                                          : 'rgba(255,255,255,0.05)';
                                       }
                                     }}
                                   >
-                                    👎 {question.downvotes}
+                                    {question.downvotes}
                                   </button>
                                 </div>
                               );
@@ -1056,8 +1024,7 @@ export default function JoinRoomPage() {
                           alignItems: 'center',
                           fontSize: '12px',
                           color: 'rgba(255,255,255,0.6)',
-                          marginTop: '8px',
-                          textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                          marginTop: '8px'
                         }}>
                           <span>
                             Asked by {(() => {
@@ -1085,41 +1052,31 @@ export default function JoinRoomPage() {
 
             {/* Question Input */}
             <div style={{
-              background: isPresenter
-                ? 'linear-gradient(135deg, rgba(147, 112, 219, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)'
-                : 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
-              backdropFilter: 'blur(15px)',
-              borderRadius: '16px',
-              padding: '24px',
-              marginBottom: '24px',
-              border: isPresenter
-                ? '1px solid rgba(147, 112, 219, 0.3)'
-                : '1px solid rgba(102, 126, 234, 0.3)',
-              boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              padding: '28px',
+              marginBottom: '32px',
+              border: '1px solid rgba(255,255,255,0.06)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
                 <h3 style={{
                   fontSize: '18px',
                   fontWeight: '600',
                   color: 'white',
                   margin: 0,
-                  textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+                  letterSpacing: '-0.01em'
                 }}>
                   Ask a Question
                 </h3>
                 <span style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   padding: '4px 8px',
-                  borderRadius: '12px',
-                  background: isPresenter
-                    ? 'rgba(147, 112, 219, 0.2)'
-                    : 'rgba(102, 126, 234, 0.2)',
-                  color: 'white',
-                  border: isPresenter
-                    ? '1px solid rgba(147, 112, 219, 0.3)'
-                    : '1px solid rgba(102, 126, 234, 0.3)'
+                  borderRadius: '6px',
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(255,255,255,0.08)'
                 }}>
-                  {isPresenter ? '🎤 Presenter' : '👥 Attendee'}
+                  {isPresenter ? 'Presenter' : 'Participant'}
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '16px' }}>
@@ -1129,31 +1086,28 @@ export default function JoinRoomPage() {
                   onChange={(e) => setNewQuestion(e.target.value)}
                   onKeyPress={handleQuestionKeyPress}
                   placeholder={isPresenter
-                    ? "Ask a question as the presenter..."
-                    : "Ask a question as an attendee..."
+                    ? "Ask a question..."
+                    : "Ask a question..."
                   }
                   style={{
                     flex: 1,
                     padding: '12px 16px',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    borderRadius: '12px',
-                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '8px',
+                    background: 'rgba(255,255,255,0.05)',
                     color: 'white',
-                    fontSize: '16px',
+                    fontSize: '15px',
                     outline: 'none',
-                    backdropFilter: 'blur(10px)',
                     opacity: isConnected ? 1 : 0.5,
                     cursor: isConnected ? 'text' : 'not-allowed'
                   }}
                   onFocus={(e) => {
                     if (isConnected) {
-                      e.currentTarget.style.border = '1px solid rgba(102, 126, 234, 0.6)';
-                      e.currentTarget.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.3)';
+                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
                     }
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.3)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.12)';
                   }}
                   disabled={!isConnected}
                 />
@@ -1161,28 +1115,25 @@ export default function JoinRoomPage() {
                   onClick={postQuestion}
                   disabled={!isConnected || !newQuestion.trim()}
                   style={{
-                    padding: '12px 24px',
-                    background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: '600',
+                    padding: '12px 20px',
+                    background: 'rgba(40, 167, 69, 0.1)',
+                    color: 'rgba(40, 167, 69, 0.9)',
+                    border: '1px solid rgba(40, 167, 69, 0.2)',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: '500',
                     cursor: (!isConnected || !newQuestion.trim()) ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.3s',
-                    boxShadow: '0 4px 15px rgba(40, 167, 69, 0.4)',
+                    transition: 'all 0.2s',
                     opacity: (!isConnected || !newQuestion.trim()) ? 0.5 : 1
                   }}
                   onMouseOver={(e) => {
                     if (isConnected && newQuestion.trim()) {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(40, 167, 69, 0.6)';
+                      e.currentTarget.style.background = 'rgba(40, 167, 69, 0.15)';
                     }
                   }}
                   onMouseOut={(e) => {
                     if (isConnected && newQuestion.trim()) {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(40, 167, 69, 0.4)';
+                      e.currentTarget.style.background = 'rgba(40, 167, 69, 0.1)';
                     }
                   }}
                 >
@@ -1190,37 +1141,32 @@ export default function JoinRoomPage() {
                 </button>
               </div>
               <p style={{
-                fontSize: '14px',
-                margin: '12px 0 0 0',
-                color: 'rgba(255,255,255,0.8)',
-                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                fontSize: '13px',
+                margin: '16px 0 0 0',
+                color: 'rgba(255,255,255,0.6)'
               }}>
                 Press Enter to ask, or click the Ask button. Questions will be visible to all members in the room.
               </p>
             </div>
             {/* Testing Instructions */}
             <div style={{
-              background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%)',
-              backdropFilter: 'blur(15px)',
-              borderRadius: '16px',
-              padding: '24px',
-              marginTop: '24px',
-              border: '1px solid rgba(255, 193, 7, 0.3)',
-              boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              padding: '28px',
+              marginTop: '32px',
+              border: '1px solid rgba(255,255,255,0.06)'
             }}>
               <h3 style={{
                 fontSize: '18px',
                 fontWeight: '600',
                 color: 'white',
-                margin: '0 0 16px 0',
-                textShadow: '0 2px 10px rgba(255, 193, 7, 0.6)'
+                margin: '0 0 16px 0'
               }}>Testing Instructions</h3>
               <ul style={{
                 color: 'rgba(255,255,255,0.85)',
                 margin: 0,
                 paddingLeft: '20px',
-                lineHeight: '1.6',
-                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                lineHeight: '1.6'
               }}>
                 <li>• Open this same URL in multiple browser tabs or different browsers</li>
                 <li>• Each tab will join the same room automatically</li>
