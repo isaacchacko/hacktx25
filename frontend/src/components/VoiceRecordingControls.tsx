@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useVoiceRecording } from '../hooks/useVoiceRecording';
 import { useAssemblyAITranscription } from '../hooks/useAssemblyAITranscription';
-import { useMockTranscription } from '../hooks/useMockTranscription';
 
 interface VoiceRecordingControlsProps {
   onTranscriptionUpdate: (transcription: string, history: Array<{
@@ -16,7 +15,6 @@ interface VoiceRecordingControlsProps {
 export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
   onTranscriptionUpdate
 }) => {
-  const [useRealTranscription, setUseRealTranscription] = useState(false);
   const [hasStartedTranscription, setHasStartedTranscription] = useState(false);
 
   const {
@@ -32,12 +30,7 @@ export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
     audioStream
   } = useVoiceRecording();
 
-  const assemblyAI = useAssemblyAITranscription();
-  const mockTranscription = useMockTranscription();
-
-  // Use the selected transcription service
-  const transcriptionService = useRealTranscription ? assemblyAI : mockTranscription;
-  const { isTranscribing, transcription, transcriptionHistory, startTranscription, stopTranscription, error: transcriptionError } = transcriptionService;
+  const { isTranscribing, transcription, transcriptionHistory, startTranscription, stopTranscription, error: transcriptionError } = useAssemblyAITranscription();
 
   // Update parent component when transcription changes
   React.useEffect(() => {
@@ -46,21 +39,15 @@ export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
 
   // Start transcription when audio stream becomes available
   React.useEffect(() => {
-    if (isRecording && !isTranscribing && !hasStartedTranscription) {
-      if (useRealTranscription && audioStream) {
-        console.log('Audio stream available, starting AssemblyAI transcription...');
-        setHasStartedTranscription(true);
-        startTranscription(audioStream).catch(error => {
-          console.error('Failed to start AssemblyAI transcription:', error);
-          setHasStartedTranscription(false);
-        });
-      } else if (!useRealTranscription) {
-        console.log('Starting mock transcription...');
-        setHasStartedTranscription(true);
-        startTranscription();
-      }
+    if (isRecording && !isTranscribing && !hasStartedTranscription && audioStream) {
+      console.log('Audio stream available, starting AssemblyAI transcription...');
+      setHasStartedTranscription(true);
+      startTranscription(audioStream).catch(error => {
+        console.error('Failed to start AssemblyAI transcription:', error);
+        setHasStartedTranscription(false);
+      });
     }
-  }, [isRecording, audioStream, isTranscribing, startTranscription, useRealTranscription, hasStartedTranscription]);
+  }, [isRecording, audioStream, isTranscribing, startTranscription, hasStartedTranscription]);
 
   const handleStartRecording = async () => {
     try {
@@ -110,52 +97,15 @@ export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
         gap: '12px',
         marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: 'white',
-            margin: 0,
-            textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
-          }}>
-            🎤 Voice Recording
-          </h3>
-          
-          {/* Transcription Mode Toggle */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '4px 8px',
-            borderRadius: '12px',
-            background: 'rgba(255,255,255,0.1)',
-            border: '1px solid rgba(255,255,255,0.2)'
-          }}>
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
-              {useRealTranscription ? 'AssemblyAI' : 'Mock'}
-            </span>
-            <button
-              onClick={() => {
-                setUseRealTranscription(!useRealTranscription);
-                setHasStartedTranscription(false); // Reset the flag when switching modes
-              }}
-              disabled={isRecording}
-              style={{
-                padding: '2px 6px',
-                fontSize: '10px',
-                borderRadius: '6px',
-                border: '1px solid rgba(255,255,255,0.3)',
-                background: useRealTranscription ? 'rgba(40, 167, 69, 0.3)' : 'rgba(255, 193, 7, 0.3)',
-                color: 'white',
-                cursor: isRecording ? 'not-allowed' : 'pointer',
-                opacity: isRecording ? 0.5 : 1,
-                transition: 'all 0.3s'
-              }}
-            >
-              {useRealTranscription ? 'Real' : 'Mock'}
-            </button>
-          </div>
-        </div>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: 'white',
+          margin: 0,
+          textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+        }}>
+          🎤 Voice Recording
+        </h3>
         
         {isRecording && (
           <div style={{
@@ -373,7 +323,7 @@ export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
         textShadow: '0 2px 4px rgba(0,0,0,0.5)'
       }}>
         {isRecording 
-          ? 'Your voice is being recorded and transcribed in real-time. Attendees can see the live transcription.'
+          ? 'Your voice is being recorded and transcribed in real-time using AssemblyAI. Attendees can see the live transcription.'
           : 'Click "Start Recording" to begin voice recording and real-time transcription for your presentation.'
         }
       </p>
