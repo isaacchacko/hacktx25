@@ -57,7 +57,7 @@ export default function StartPresentingPage() {
 return (
   <div style={{
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+    background: 'linear-gradient(180deg, #000000 0%, #15151c 50%, #0a0a0a 100%)',
     position: 'relative',
     overflow: 'hidden'
   }}>

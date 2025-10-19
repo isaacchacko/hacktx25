@@ -15,9 +15,11 @@ export default function UploadPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+        background: 'linear-gradient(180deg, #000000 0%, #15151c 50%, #0a0a0a 100%)',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={{
             width: '48px',
             height: '48px',
@@ -42,7 +44,7 @@ export default function UploadPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+        background: 'linear-gradient(180deg, #000000 0%, #15151c 50%, #0a0a0a 100%)',
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
@@ -50,21 +52,6 @@ export default function UploadPage() {
         justifyContent: 'center',
         padding: '20px'
       }}>
-        {/* Stars Background */}
-        <div style={{
-          position: 'absolute',
-          width: '100%',
-          height: '100%',
-          background: `
-            radial-gradient(2px 2px at 20% 30%, white, transparent),
-            radial-gradient(2px 2px at 60% 70%, white, transparent),
-            radial-gradient(1px 1px at 50% 50%, white, transparent),
-            radial-gradient(1px 1px at 80% 10%, white, transparent)
-          `,
-          backgroundSize: '200px 200px',
-          opacity: 0.5,
-          pointerEvents: 'none'
-        }} />
 
         <div style={{
           background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
@@ -139,27 +126,10 @@ export default function UploadPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+      background: 'linear-gradient(180deg, #000000 0%, #15151c 50%, #0a0a0a 100%)',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Stars Background */}
-      <div style={{
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        background: `
-          radial-gradient(2px 2px at 20% 30%, white, transparent),
-          radial-gradient(2px 2px at 60% 70%, white, transparent),
-          radial-gradient(1px 1px at 50% 50%, white, transparent),
-          radial-gradient(1px 1px at 80% 10%, white, transparent),
-          radial-gradient(2px 2px at 90% 60%, white, transparent)
-        `,
-        backgroundSize: '200px 200px, 300px 300px, 250px 250px, 280px 280px, 320px 320px',
-        animation: 'twinkle 3s ease-in-out infinite alternate',
-        pointerEvents: 'none',
-        opacity: 0.5
-      }} />
 
       {/* Navbar */}
       <Navbar />
@@ -170,10 +140,6 @@ export default function UploadPage() {
       </div>
 
       <style jsx global>{`
-        @keyframes twinkle {
-          0% { opacity: 0.3; }
-          100% { opacity: 0.7; }
-        }
         @keyframes spin {
           to { transform: rotate(360deg); }
         }

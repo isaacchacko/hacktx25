@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -10,7 +10,6 @@ import Navbar from "../../components/Navbar";
 import { VoiceRecordingControls } from "../../components/VoiceRecordingControls";
 import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
 import { generateMultipleSummaries, SummaryRequest } from "../../utils/geminiApi";
-import { generatePresentationSummaryPDF, downloadPDF, generateFilename } from "../../utils/pdfGenerator";
 
 // Dynamically import PDF components to prevent SSR issues
 const PDFViewer = dynamic(() => import("../../components/PDFViewer"), {
@@ -83,7 +82,6 @@ export default function JoinRoomPage() {
   const { user, signOut } = useAuth();
   const { socket, isConnected, isPresenter, isAnonymous, joinRoom, currentRoom } = useSocket();
 
-
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -96,19 +94,6 @@ export default function JoinRoomPage() {
     timestamp: number;
   }>>([]);
   const [isTranscriptionCollapsed, setIsTranscriptionCollapsed] = useState(false);
-  // Timer states - ADD THIS
-  const [estimatedTime, setEstimatedTime] = useState<number>(0);
-  const [slideTimings, setSlideTimings] = useState<number[]>([]);
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-  const handleTimeUpdate = useCallback((timings: number[], estimatedTotal: number) => {
-    setSlideTimings(timings);
-    setEstimatedTime(estimatedTotal);
-  }, []);
-
 
   // PDF state
   const [pdfUrl, setPdfUrl] = useState<string>('');
@@ -124,24 +109,11 @@ export default function JoinRoomPage() {
   const [transcriptionsByPage, setTranscriptionsByPage] = useState<{ [pageNumber: number]: PageTranscription }>({});
   const [viewByPage, setViewByPage] = useState(false); // Toggle between views
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // Fullscreen state for PDF viewer
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-
-  // Share room link state
-  const [showShareCopied, setShowShareCopied] = useState<boolean>(false);
-
-  // Summary generation state
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   
-  // PDF viewer ref for capturing slide images
-  const pdfViewerRef = useRef<HTMLDivElement>(null);
-
   // Debug logging for presenter current page changes
   useEffect(() => {
     console.log('📄 Presenter current page updated to:', presenterCurrentPage);
   }, [presenterCurrentPage]);
-
 
   // Load PDF URL from localStorage on component mount
   useEffect(() => {
@@ -159,7 +131,7 @@ export default function JoinRoomPage() {
     } else {
       console.log('❌ No PDF URL found in localStorage');
     }
-
+    
     // Initialize page 1 for transcriptions
     if (!isInitialized) {
       setTranscriptionsByPage({
@@ -189,7 +161,7 @@ export default function JoinRoomPage() {
   }, [socket, isConnected, joinCode, currentRoom]); // Removed user dependency
 
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    if (!socket) return;
 
     // Set up event listeners
     const handleJoinedRoom = (data: any) => {
@@ -219,24 +191,12 @@ export default function JoinRoomPage() {
 
     const handleError = (errorMessage: string) => {
       console.error("Socket error:", errorMessage);
-
-      // Provide more helpful error messages
-      if (errorMessage === "Room not found") {
-        setError("Room not found. Please check the room code or ask the presenter to create a new room.");
-      } else if (errorMessage === "Join code is required") {
-        setError("Please enter a valid room code.");
-      } else {
-        setError(errorMessage);
-      }
+      setError(errorMessage);
     };
 
     const handleNewQuestion = (question: Question) => {
-      console.log("📥 Received new-question event:", question);
-      setQuestions(prev => {
-        const updated = [...prev, question];
-        console.log("📥 Updated questions list:", updated);
-        return updated;
-      });
+      console.log("New question:", question);
+      setQuestions(prev => [...prev, question]);
     };
 
     const handleQuestionUpdated = (question: Question) => {
@@ -305,28 +265,15 @@ export default function JoinRoomPage() {
       socket.off("room-pdf-update", handleRoomPdfUpdate);
       socket.off("pdf-page-updated", handlePdfPageUpdate);
     };
-  }, [socket, isConnected]);
+  }, [socket]);
 
   const postQuestion = () => {
-    console.log("🔍 postQuestion called");
-    console.log("🔍 socket:", socket);
-    console.log("🔍 isConnected:", isConnected);
-    console.log("🔍 newQuestion:", newQuestion);
-    console.log("🔍 joinCode:", joinCode);
-
-    if (socket && isConnected && newQuestion.trim()) {
-      console.log("📤 Emitting post-question event");
+    if (socket && newQuestion.trim()) {
       socket.emit("post-question", {
         question: newQuestion.trim(),
         joinCode: joinCode
       });
       setNewQuestion("");
-      console.log("✅ Question text cleared from input");
-    } else {
-      console.log("❌ Cannot post question - missing socket, not connected, or empty question");
-      console.log("❌ Socket exists:", !!socket);
-      console.log("❌ Is connected:", isConnected);
-      console.log("❌ Has question text:", !!newQuestion.trim());
     }
   };
 
@@ -370,135 +317,6 @@ export default function JoinRoomPage() {
     }
   };
 
-  // Generate summary for all slides with enhanced context
-  const generateSummary = async () => {
-    setIsGeneratingSummary(true);
-
-    try {
-      console.log('📝 Generating enhanced summary for all slides with slide context...');
-
-      // Get context data from localStorage and room state
-      const overallSummary = localStorage.getItem('presentation-summary') || '';
-      const pageTexts = JSON.parse(localStorage.getItem('presentation-page-texts') || '[]');
-      
-      console.log('📄 Context data loaded:', {
-        overallSummary: overallSummary ? 'Available' : 'Not available',
-        pageTextsCount: pageTexts.length,
-        totalPages: totalPages,
-        isPresenter: isPresenter
-      });
-
-      // Get all pages that have transcriptions
-      const pagesWithTranscriptions = Object.keys(transcriptionsByPage)
-        .map(Number)
-        .sort((a, b) => a - b);
-
-      if (pagesWithTranscriptions.length === 0) {
-        console.log('📝 No transcriptions found for any slide');
-        console.log('📝 SUMMARY GENERATED:');
-        console.log('==================');
-        console.log('Slide 1: No transcriptions available for this presentation.');
-        console.log('==================');
-        return;
-      }
-
-      // Prepare enhanced requests for Gemini API
-      const summaryRequests: SummaryRequest[] = [];
-
-      for (const pageNumber of pagesWithTranscriptions) {
-        const pageData = transcriptionsByPage[pageNumber];
-        
-        // Get slide text - pageTexts is 0-indexed, pageNumber is 1-indexed
-        const slideText = pageTexts[pageNumber - 1] || '';
-        
-        if (pageData && pageData.transcriptions.length > 0) {
-          // Combine all transcriptions for this page
-          const combinedText = pageData.transcriptions
-            .map(t => t.text)
-            .join(' ')
-            .trim();
-
-          summaryRequests.push({
-            pageNumber,
-            transcriptionText: combinedText,
-            slideText: slideText,
-            overallSummary: overallSummary,
-            totalPages: totalPages,
-            currentPage: currentPage,
-            isPresenter: isPresenter
-          });
-        } else {
-          summaryRequests.push({
-            pageNumber,
-            transcriptionText: '',
-            slideText: slideText,
-            overallSummary: overallSummary,
-            totalPages: totalPages,
-            currentPage: currentPage,
-            isPresenter: isPresenter
-          });
-        }
-      }
-
-      // Generate summaries using enhanced Gemini API
-      console.log('🤖 Calling enhanced Gemini API for intelligent summarization with slide context...');
-      const summaries = await generateMultipleSummaries(summaryRequests);
-
-      // Sort summaries by page number
-      const sortedSummaries = summaries.sort((a, b) => a.pageNumber - b.pageNumber);
-      
-      console.log('📝 ENHANCED SUMMARY GENERATED:');
-      console.log('==============================');
-      sortedSummaries.forEach(({ pageNumber, summary, success, error }) => {
-        if (success) {
-          console.log(`Slide ${pageNumber}: ${summary}`);
-        } else {
-          console.log(`Slide ${pageNumber}: Error - ${error}`);
-        }
-      });
-      console.log('==============================');
-
-      // Generate PDF document with slide images and summaries
-      console.log('📄 Generating PDF document with slide images and summaries...');
-      
-      try {
-        const pdfBlob = await generatePresentationSummaryPDF(
-          sortedSummaries,
-          pdfViewerRef.current,
-          pageTexts,
-          totalPages,
-          currentPage,
-          pdfUrl,
-          {
-            title: 'Presentation Summary',
-            author: 'Presentation Platform',
-            subject: 'AI-Generated Slide Summaries',
-            roomCode: joinCode,
-            generatedAt: new Date()
-          }
-        );
-
-        // Download the PDF
-        const filename = generateFilename(joinCode);
-        downloadPDF(pdfBlob, filename);
-        
-        console.log('✅ PDF document generated and downloaded successfully!');
-        console.log(`📁 Filename: ${filename}`);
-        
-      } catch (pdfError) {
-        console.error('❌ Error generating PDF:', pdfError);
-        
-        // Fallback: still show summaries in console if PDF generation fails
-        console.log('📝 Fallback: Summaries available in console above');
-      }
-
-    } catch (error) {
-      console.error('❌ Error generating enhanced summary:', error);
-    } finally {
-      setIsGeneratingSummary(false);
-    }
-  };
-
   // Handle transcription updates from voice recording
   const handleTranscriptionUpdate = useCallback((transcription: string, history: Array<{
     text: string;
@@ -509,7 +327,7 @@ export default function JoinRoomPage() {
     setLiveTranscription(transcription);
     setTranscriptionHistory(history);
 
-
+    
     // Add new transcriptions to current page
     if (history.length > 0) {
       // Get all existing transcriptions across all pages to avoid duplicates
@@ -517,10 +335,10 @@ export default function JoinRoomPage() {
       Object.values(transcriptionsByPage).forEach(pageData => {
         pageData.transcriptions.forEach(t => allExistingTimestamps.add(t.timestamp));
       });
-
+      
       // Filter out transcriptions that already exist in any page
       const newTranscriptions = history.filter(t => !allExistingTimestamps.has(t.timestamp));
-
+      
       if (newTranscriptions.length > 0) {
         setTranscriptionsByPage(prev => ({
           ...prev,
@@ -533,7 +351,7 @@ export default function JoinRoomPage() {
         }));
       }
     }
-
+    
     // Broadcast transcription to other users in the room
     if (socket && transcription) {
       socket.emit('transcription-update', {
@@ -549,7 +367,7 @@ export default function JoinRoomPage() {
   // PDF-related handlers
   const handlePageChange = useCallback((page: number) => {
     console.log('📄 Page changed to:', page);
-
+    
     // Finalize previous page's transcription
     if (currentPage !== page && transcriptionsByPage[currentPage]) {
       setTranscriptionsByPage(prev => ({
@@ -560,7 +378,7 @@ export default function JoinRoomPage() {
         }
       }));
     }
-
+    
     setCurrentPage(page);
     // Initialize new page transcription if it doesn't exist
     setTranscriptionsByPage(prev => ({
@@ -571,7 +389,7 @@ export default function JoinRoomPage() {
         startTime: Date.now()
       }
     }));
-
+    
     // If user is presenter, emit page change to socket server
     if (isPresenter && socket) {
       console.log('📄 Presenter changing page to:', page, 'emitting to socket server');
@@ -597,98 +415,12 @@ export default function JoinRoomPage() {
     setShowPdfViewer(!showPdfViewer);
   }, [showPdfViewer]);
 
-  const toggleFullscreen = useCallback(() => {
-    console.log('📄 Toggling fullscreen, current state:', isFullscreen);
-    setIsFullscreen(!isFullscreen);
-  }, [isFullscreen]);
-
-  const shareRoomLink = useCallback(async () => {
-    try {
-      const roomUrl = `${window.location.origin}/${joinCode}`;
-      await navigator.clipboard.writeText(roomUrl);
-      console.log('📋 Room link copied to clipboard:', roomUrl);
-      setShowShareCopied(true);
-      setTimeout(() => setShowShareCopied(false), 2000); // Hide after 2 seconds
-    } catch (error) {
-      console.error('Failed to copy room link:', error);
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = `${window.location.origin}/${joinCode}`;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setShowShareCopied(true);
-      setTimeout(() => setShowShareCopied(false), 2000);
-    }
-  }, [joinCode]);
-
-  // Handle keyboard navigation in fullscreen
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isFullscreen) return;
-
-      switch (event.key) {
-        case 'Escape':
-          console.log('📄 Escape key pressed, exiting fullscreen');
-          setIsFullscreen(false);
-          break;
-        case 'ArrowLeft':
-          event.preventDefault();
-          if (currentPage > 1) {
-            console.log('📄 Left arrow pressed, going to previous page');
-            handlePageChange(currentPage - 1);
-          }
-          break;
-        case 'ArrowRight':
-          event.preventDefault();
-          if (currentPage < totalPages) {
-            console.log('📄 Right arrow pressed, going to next page');
-            handlePageChange(currentPage + 1);
-          }
-          break;
-      }
-    };
-
-    if (isFullscreen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [isFullscreen, currentPage, totalPages, handlePageChange]);
-
   // Remove authentication requirement - allow anonymous users
-
-  // Fullscreen PDF viewer layout - UI-free mode
-  if (isFullscreen && isPresenter && pdfUrl) {
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        background: '#000',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <PDFViewer
-          pdfUrl={pdfUrl}
-          currentPage={currentPage}
-          onPageChange={handlePageChange}
-          onPDFLoad={handleTotalPagesChange}
-          fitMode="page"
-          className="h-full w-full"
-        />
-      </div>
-    );
-  }
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+      background: 'linear-gradient(180deg, #000000 0%, #15151c 50%, #0a0a0a 100%)',
       position: 'relative',
       overflow: 'hidden'
     }}>
@@ -734,54 +466,15 @@ export default function JoinRoomPage() {
               boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <h1 style={{
-                    color: 'white',
-                    fontSize: '32px',
-                    fontWeight: 'bold',
-                    margin: 0,
-                    textShadow: '0 0 20px rgba(147, 112, 219, 0.8)'
-                  }}>
-                    Room: {joinCode}
-                  </h1>
-
-                  {/* Share Room Link Button */}
-                  <button
-                    onClick={shareRoomLink}
-                    style={{
-                      padding: '8px 16px',
-                      background: showShareCopied
-                        ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
-                        : 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '20px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s',
-                      boxShadow: '0 4px 15px rgba(23, 162, 184, 0.4)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                    onMouseOver={(e) => {
-                      if (!showShareCopied) {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(23, 162, 184, 0.6)';
-                      }
-                    }}
-                    onMouseOut={(e) => {
-                      if (!showShareCopied) {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(23, 162, 184, 0.4)';
-                      }
-                    }}
-                  >
-                    {showShareCopied ? '✅ Copied!' : '📋 Share Room Link'}
-                  </button>
-                </div>
-
+                <h1 style={{
+                  color: 'white',
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  margin: 0,
+                  textShadow: '0 0 20px rgba(147, 112, 219, 0.8)'
+                }}>
+                  Room: {joinCode}
+                </h1>
                 <div style={{
                   padding: '8px 16px',
                   borderRadius: '20px',
@@ -825,29 +518,7 @@ export default function JoinRoomPage() {
                   marginBottom: '16px',
                   backdropFilter: 'blur(10px)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '18px' }}>⚠️</span>
-                    <strong>Error: {error}</strong>
-                  </div>
-                  {error.includes("Room not found") && (
-                    <div style={{ fontSize: '14px', marginTop: '8px', lineHeight: '1.4' }}>
-                      <p style={{ margin: '0 0 8px 0' }}>This could happen if:</p>
-                      <ul style={{ margin: '0', paddingLeft: '20px' }}>
-                        <li>The room code is incorrect</li>
-                        <li>The room was created but the server restarted</li>
-                        <li>The presenter hasn't created the room yet</li>
-                      </ul>
-                      <div style={{ marginTop: '12px' }}>
-                        <Link href="/start-presenting" style={{
-                          color: '#ff6b6b',
-                          textDecoration: 'underline',
-                          fontWeight: '600'
-                        }}>
-                          Create a new room instead
-                        </Link>
-                      </div>
-                    </div>
-                  )}
+                  Error: {error}
                 </div>
               )}
 
@@ -963,77 +634,6 @@ export default function JoinRoomPage() {
                       </div>
                     )}
 
-                    {/* Fullscreen button - Only for presenters */}
-                    {isPresenter && showPdfViewer && (
-                      <button
-                        onClick={toggleFullscreen}
-                        style={{
-                          padding: '8px 16px',
-                          background: isFullscreen
-                            ? 'linear-gradient(135deg, #ffc107 0%, #ff8c00 100%)'
-                            : 'linear-gradient(135deg, #6f42c1 0%, #8e44ad 100%)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s',
-                          boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
-                        }}
-                      >
-                        {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
-                      </button>
-                    )}
-
-
-                    {/* PDF Viewer Section */}
-                    {pdfUrl && (
-                      <div style={{
-                        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
-                        backdropFilter: 'blur(15px)',
-                        borderRadius: '16px',
-                        padding: '20px',
-                        marginBottom: '24px',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
-                      }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          color: 'white'
-                        }}>
-                          <span style={{ fontSize: '28px' }}>⏱️</span>
-                          <div style={{ flex: 1 }}>
-                            <div style={{
-                              fontSize: '18px',
-                              fontWeight: '700',
-                              textShadow: '0 2px 10px rgba(147, 112, 219, 0.8)',
-                              marginBottom: '4px'
-                            }}>
-                              Estimated Time Remaining: {formatTime(estimatedTime)}
-                            </div>
-                            <div style={{
-                              fontSize: '13px',
-                              color: 'rgba(255,255,255,0.8)',
-                              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-                            }}>
-                              Based on your presentation pace • Slide {currentPage} of {totalPages}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     <button
                       onClick={togglePdfViewer}
                       style={{
@@ -1083,10 +683,7 @@ export default function JoinRoomPage() {
                     )}
 
                     {/* PDF Viewer */}
-                    <div 
-                      ref={pdfViewerRef}
-                      style={{ flex: 1, overflow: 'hidden', minHeight: 0, height: 'calc(100% - 120px)' }}
-                    >
+                    <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, height: 'calc(100% - 120px)' }}>
                       <PDFViewer
                         pdfUrl={pdfUrl}
                         currentPage={currentPage}
@@ -1176,113 +773,6 @@ export default function JoinRoomPage() {
                 viewByPage={viewByPage}
                 onToggleView={() => setViewByPage(!viewByPage)}
               />
-            )}
-
-            {/* Summary Generation - For All Users */}
-            {(liveTranscription || transcriptionHistory.length > 0 || Object.keys(transcriptionsByPage).length > 0) && (
-              <div style={{
-                background: isPresenter
-                  ? 'linear-gradient(135deg, rgba(147, 112, 219, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)'
-                  : 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
-                backdropFilter: 'blur(15px)',
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '24px',
-                border: isPresenter
-                  ? '2px solid rgba(147, 112, 219, 0.3)'
-                  : '2px solid rgba(102, 126, 234, 0.3)',
-                boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: 'white',
-                    margin: 0,
-                    textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
-                  }}>
-                    📝 Slide Summaries
-                  </h3>
-                  <div style={{
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    background: isPresenter
-                      ? 'rgba(147, 112, 219, 0.2)'
-                      : 'rgba(102, 126, 234, 0.2)',
-                    color: 'white',
-                    border: isPresenter
-                      ? '1px solid rgba(147, 112, 219, 0.3)'
-                      : '1px solid rgba(102, 126, 234, 0.3)'
-                  }}>
-                    {Object.keys(transcriptionsByPage).length} slide{Object.keys(transcriptionsByPage).length !== 1 ? 's' : ''} with transcriptions
-                  </div>
-                </div>
-
-                <p style={{
-                  fontSize: '14px',
-                  color: 'rgba(255,255,255,0.8)',
-                  margin: '0 0 16px 0',
-                  lineHeight: '1.5'
-                }}>
-                  Generate intelligent summaries for each slide based on the transcriptions.
-                  A PDF document with slide images and summaries will be automatically downloaded.
-                </p>
-
-                <button
-                  onClick={generateSummary}
-                  disabled={isGeneratingSummary}
-                  style={{
-                    padding: '12px 24px',
-                    background: isGeneratingSummary
-                      ? 'linear-gradient(135deg, #6c757d 0%, #5a6268 100%)'
-                      : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: isGeneratingSummary ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.3s',
-                    boxShadow: '0 4px 15px rgba(40, 167, 69, 0.4)',
-                    opacity: isGeneratingSummary ? 0.7 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                  onMouseOver={(e) => {
-                    if (!isGeneratingSummary) {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(40, 167, 69, 0.6)';
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (!isGeneratingSummary) {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(40, 167, 69, 0.4)';
-                    }
-                  }}
-                >
-                  {isGeneratingSummary ? (
-                    <>
-                      <div style={{
-                        width: '16px',
-                        height: '16px',
-                        border: '2px solid rgba(255,255,255,0.3)',
-                        borderTopColor: 'white',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                      }} />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      📄 Generate PDF Summary
-                    </>
-                  )}
-                </button>
-              </div>
             )}
 
             {/* Debug info - remove this later */}
@@ -1477,6 +967,7 @@ export default function JoinRoomPage() {
                                     style={{
                                       padding: '8px 12px',
                                       borderRadius: '8px',
+                                      border: 'none',
                                       fontWeight: '500',
                                       fontSize: '14px',
                                       cursor: (!isConnected || question.answered) ? 'not-allowed' : 'pointer',
@@ -1518,6 +1009,7 @@ export default function JoinRoomPage() {
                                     style={{
                                       padding: '8px 12px',
                                       borderRadius: '8px',
+                                      border: 'none',
                                       fontWeight: '500',
                                       fontSize: '14px',
                                       cursor: (!isConnected || question.answered) ? 'not-allowed' : 'pointer',
@@ -1667,7 +1159,7 @@ export default function JoinRoomPage() {
                 />
                 <button
                   onClick={postQuestion}
-                  disabled={!socket || !isConnected || !newQuestion.trim()}
+                  disabled={!isConnected || !newQuestion.trim()}
                   style={{
                     padding: '12px 24px',
                     background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
@@ -1676,19 +1168,19 @@ export default function JoinRoomPage() {
                     borderRadius: '12px',
                     fontSize: '16px',
                     fontWeight: '600',
-                    cursor: (!socket || !isConnected || !newQuestion.trim()) ? 'not-allowed' : 'pointer',
+                    cursor: (!isConnected || !newQuestion.trim()) ? 'not-allowed' : 'pointer',
                     transition: 'all 0.3s',
                     boxShadow: '0 4px 15px rgba(40, 167, 69, 0.4)',
-                    opacity: (!socket || !isConnected || !newQuestion.trim()) ? 0.5 : 1
+                    opacity: (!isConnected || !newQuestion.trim()) ? 0.5 : 1
                   }}
                   onMouseOver={(e) => {
-                    if (socket && isConnected && newQuestion.trim()) {
+                    if (isConnected && newQuestion.trim()) {
                       e.currentTarget.style.transform = 'translateY(-2px)';
                       e.currentTarget.style.boxShadow = '0 6px 20px rgba(40, 167, 69, 0.6)';
                     }
                   }}
                   onMouseOut={(e) => {
-                    if (socket && isConnected && newQuestion.trim()) {
+                    if (isConnected && newQuestion.trim()) {
                       e.currentTarget.style.transform = 'translateY(0)';
                       e.currentTarget.style.boxShadow = '0 4px 15px rgba(40, 167, 69, 0.4)';
                     }
