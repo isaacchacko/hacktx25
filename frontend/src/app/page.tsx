@@ -67,85 +67,86 @@ export default function Home() {
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         {/* Header/Navbar */}
         <header style={{
-          padding: '20px 40px',
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
+          backdropFilter: 'blur(15px)',
+          padding: '22px 45px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backdropFilter: 'blur(10px)',
-          background: 'rgba(255,255,255,0.05)',
           borderBottom: '1px solid rgba(255,255,255,0.1)'
         }}>
-          <div style={{
-            color: 'white',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            textShadow: '0 0 20px rgba(147, 112, 219, 0.8)'
-          }}>
-            <span style={{ fontSize: '36px' }}>🌟</span>
-            <span>PromptDeck</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <h1 style={{ 
+              color: 'white', 
+              margin: 0, 
+              fontSize: '28px',
+              textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.textShadow = '0 0 30px rgba(147, 112, 219, 1)'}
+            onMouseOut={(e) => e.currentTarget.style.textShadow = '0 0 20px rgba(147, 112, 219, 0.8)'}
+            >
+              <span style={{ fontSize: '36px' }}>🌟</span> Stellar Dashboard
+            </h1>
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
             {user ? (
               <>
-                <span style={{
-                  color: 'rgba(255,255,255,0.8)',
-                  fontSize: '14px',
-                  textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-                }}>
-                  Welcome, {user.displayName || user.email}
+                <span style={{ color: 'rgba(255,255,255,0.8)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                  👤 {user.displayName || user.email}
                 </span>
-                <Link href="/upload">
+                <Link href="/login">
                   <button style={{
-                    padding: '12px 28px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #9370db 100%)',
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
                     color: 'white',
                     border: '1px solid rgba(255,255,255,0.3)',
-                    borderRadius: '25px',
-                    fontSize: '16px',
-                    fontWeight: '600',
+                    borderRadius: '20px',
                     cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    boxShadow: '0 4px 20px rgba(147, 112, 219, 0.4)',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    boxShadow: '0 4px 15px rgba(220, 53, 69, 0.4)',
+                    transition: 'all 0.3s'
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 6px 30px rgba(147, 112, 219, 0.6)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(220, 53, 69, 0.6)';
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(147, 112, 219, 0.4)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(220, 53, 69, 0.4)';
                   }}
                   >
-                    Upload PDF
+                    Logout
                   </button>
                 </Link>
               </>
             ) : (
               <Link href="/login">
                 <button style={{
-                  padding: '12px 28px',
+                  padding: '12px 24px',
                   background: 'linear-gradient(135deg, #667eea 0%, #9370db 100%)',
                   color: 'white',
                   border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: '25px',
-                  fontSize: '16px',
-                  fontWeight: '600',
+                  borderRadius: '20px',
                   cursor: 'pointer',
-                  transition: 'all 0.3s',
-                  boxShadow: '0 4px 20px rgba(147, 112, 219, 0.4)',
-                  textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 15px rgba(147, 112, 219, 0.4)',
+                  transition: 'all 0.3s'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 6px 30px rgba(147, 112, 219, 0.6)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(147, 112, 219, 0.6)';
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(147, 112, 219, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(147, 112, 219, 0.4)';
                 }}
                 >
                   ✨ Sign In

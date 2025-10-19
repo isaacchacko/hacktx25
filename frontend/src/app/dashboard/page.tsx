@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
 import { useState, ChangeEvent } from 'react';
 import Link from 'next/link';
+import { useAuth } from "../context/AuthContext";
 
 interface Presentation {
   id: number;
@@ -11,6 +12,7 @@ interface Presentation {
 }
 
 export default function PresenterDashboard() {
+  const { user, loading } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [presentations] = useState<Presentation[]>([
     { id: 1, name: 'Q1 Sales Report.pdf', code: 'STAR01', date: '2025-10-15' },
@@ -52,21 +54,29 @@ export default function PresenterDashboard() {
           alignItems: 'center',
           borderBottom: '1px solid rgba(255,255,255,0.1)'
         }}>
-          <h1 style={{ 
-            color: 'white', 
-            margin: 0, 
-            fontSize: '28px',
-            textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <span style={{ fontSize: '36px' }}>🌟</span> Stellar Dashboard
-          </h1>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <h1 style={{ 
+              color: 'white', 
+              margin: 0, 
+              fontSize: '28px',
+              textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.textShadow = '0 0 30px rgba(147, 112, 219, 1)'}
+            onMouseOut={(e) => e.currentTarget.style.textShadow = '0 0 20px rgba(147, 112, 219, 0.8)'}
+            >
+              <span style={{ fontSize: '36px' }}>🌟</span> Stellar Dashboard
+            </h1>
+          </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
-            <span style={{ color: 'rgba(255,255,255,0.8)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-              👤 presenter@galaxy.com
-            </span>
+          <span style={{ color: 'rgba(255,255,255,0.8)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+            👤 {user?.displayName || user?.email}
+          </span>
+
             <Link href="/auth">
               <button style={{
                 padding: '12px 24px',

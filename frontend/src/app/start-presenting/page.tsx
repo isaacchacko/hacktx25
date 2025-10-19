@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "../../hooks/useSocket";
 import { useAuth } from "../context/AuthContext";
+import Link from "next/link";
 
 export default function StartPresentingPage() {
   const router = useRouter();
@@ -52,32 +53,133 @@ export default function StartPresentingPage() {
     }
   };
 
-  return (
+return (
+  <div style={{
+    minHeight: '100vh',
+    background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+    position: 'relative',
+    overflow: 'hidden'
+  }}>
+    {/* Stars Background */}
     <div style={{
-      minHeight: '100vh',
+      position: 'absolute',
+      width: '100%',
+      height: '100%',
+      backgroundImage: `
+        radial-gradient(2px 2px at 20% 30%, white, transparent),
+        radial-gradient(2px 2px at 60% 70%, white, transparent),
+        radial-gradient(1px 1px at 50% 50%, white, transparent),
+        radial-gradient(1px 1px at 80% 10%, white, transparent)
+      `,
+      backgroundSize: '200px 200px',
+      opacity: 0.5,
+      pointerEvents: 'none'
+    }} />
+
+
+    {/* NAVBAR - Now at the top */}
+    <header style={{
+      position: 'relative',
+      zIndex: 10,
+      background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
+      backdropFilter: 'blur(15px)',
+      padding: '22px 45px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderBottom: '1px solid rgba(255,255,255,0.1)'
+    }}>
+      <Link href="/" style={{ textDecoration: 'none' }}>
+        <h1 style={{ 
+          color: 'white', 
+          margin: 0, 
+          fontSize: '28px',
+          textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          cursor: 'pointer',
+          transition: 'all 0.3s'
+        }}
+        onMouseOver={(e) => e.currentTarget.style.textShadow = '0 0 30px rgba(147, 112, 219, 1)'}
+        onMouseOut={(e) => e.currentTarget.style.textShadow = '0 0 20px rgba(147, 112, 219, 0.8)'}
+        >
+          <span style={{ fontSize: '36px' }}>🌟</span> Stellar Dashboard
+        </h1>
+      </Link>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
+        {user ? (
+          <>
+            <span style={{ color: 'rgba(255,255,255,0.8)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+              👤 {user?.displayName || user?.email}
+            </span>
+            <Link href="/login">
+              <button style={{
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 15px rgba(220, 53, 69, 0.4)',
+                transition: 'all 0.3s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(220, 53, 69, 0.6)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(220, 53, 69, 0.4)';
+              }}
+              >
+                Logout
+              </button>
+            </Link>
+          </>
+        ) : (
+          <Link href="/login">
+            <button style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #667eea 0%, #9370db 100%)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              boxShadow: '0 4px 15px rgba(147, 112, 219, 0.4)',
+              transition: 'all 0.3s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(147, 112, 219, 0.6)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(147, 112, 219, 0.4)';
+            }}
+            >
+              ✨ Sign In
+            </button>
+          </Link>
+        )}
+      </div>
+    </header>
+
+    {/* Content - Centered */}
+    <div style={{
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #2d1b3d 100%)',
+      minHeight: 'calc(100vh - 90px)',
       padding: '20px',
       position: 'relative',
-      overflow: 'hidden'
+      zIndex: 1
     }}>
-      {/* Stars Background */}
-      <div style={{
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        background: `
-          radial-gradient(2px 2px at 20% 30%, white, transparent),
-          radial-gradient(2px 2px at 60% 70%, white, transparent),
-          radial-gradient(1px 1px at 50% 50%, white, transparent),
-          radial-gradient(1px 1px at 80% 10%, white, transparent)
-        `,
-        backgroundSize: '200px 200px',
-        opacity: 0.5,
-        pointerEvents: 'none'
-      }} />
 
       <div style={{ maxWidth: '550px', width: '100%', position: 'relative', zIndex: 1 }}>
         {/* Header */}
@@ -522,5 +624,6 @@ export default function StartPresentingPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

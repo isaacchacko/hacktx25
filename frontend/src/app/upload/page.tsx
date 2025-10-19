@@ -162,67 +162,65 @@ export default function UploadPage() {
 
       {/* Navbar */}
       <header style={{
-        padding: '20px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backdropFilter: 'blur(10px)',
-        background: 'rgba(255,255,255,0.05)',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        position: 'relative',
-        zIndex: 10
-      }}>
-        <Link href="/" style={{ textDecoration: 'none' }}>
-          <div style={{
-            color: 'white',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
-            cursor: 'pointer'
-          }}>
-            <span style={{ fontSize: '36px' }}>🌟</span>
-            <span>PromptDeck</span>
-          </div>
-        </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{
-            color: 'rgba(255,255,255,0.8)',
-            fontSize: '14px',
-            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-          }}>
-            Welcome, {user.displayName || user.email}
-          </span>
-          <Link href="/">
-            <button style={{
-              padding: '10px 24px',
-              background: 'rgba(255,255,255,0.1)',
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              borderRadius: '20px',
-              fontSize: '14px',
-              fontWeight: '600',
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
+          backdropFilter: 'blur(15px)',
+          padding: '22px 45px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid rgba(255,255,255,0.1)'
+        }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <h1 style={{ 
+              color: 'white', 
+              margin: 0, 
+              fontSize: '28px',
+              textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
               cursor: 'pointer',
-              transition: 'all 0.3s',
-              backdropFilter: 'blur(10px)',
-              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+              transition: 'all 0.3s'
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(255,255,255,0.2)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
+            onMouseOver={(e) => e.currentTarget.style.textShadow = '0 0 30px rgba(147, 112, 219, 1)'}
+            onMouseOut={(e) => e.currentTarget.style.textShadow = '0 0 20px rgba(147, 112, 219, 0.8)'}
             >
-              ← Back to Home
-            </button>
+              <span style={{ fontSize: '36px' }}>🌟</span> Stellar Dashboard
+            </h1>
           </Link>
-        </div>
-      </header>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
+          <span style={{ color: 'rgba(255,255,255,0.8)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+            👤 {user?.displayName || user?.email}
+          </span>
+
+            <Link href="/auth">
+              <button style={{
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 15px rgba(220, 53, 69, 0.4)',
+                transition: 'all 0.3s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(220, 53, 69, 0.6)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(220, 53, 69, 0.4)';
+              }}
+              >
+                Logout
+              </button>
+            </Link>
+          </div>
+        </header>
 
       {/* PDF Upload Component */}
       <div style={{ position: 'relative', zIndex: 1 }}>
