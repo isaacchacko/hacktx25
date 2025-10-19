@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { storage, db, auth } from '../app/lib/firebase';
+import { useSocket } from '../hooks/useSocket';
 
 // Dynamically import PresentationViewer to prevent SSR issues
 const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
@@ -37,12 +38,23 @@ const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
 
 const PDFPresentationDemo: React.FC = () => {
   const router = useRouter();
+  const { socket, isConnected, createRoom, currentRoom, isAnonymous } = useSocket();
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isCreatingRoom, setIsCreatingRoom] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Listen for room creation and navigate
+  useEffect(() => {
+    if (currentRoom && isCreatingRoom) {
+      setIsCreatingRoom(false);
+      router.push(`/${currentRoom}`);
+    }
+  }, [currentRoom, isCreatingRoom, router]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -70,9 +82,24 @@ const PDFPresentationDemo: React.FC = () => {
       return;
     }
 
+    // Check if user is anonymous
+    if (isAnonymous) {
+      setError("Anonymous users cannot create presentations. Please sign in to create a presentation.");
+      return;
+    }
+
+    // Check socket connection
+    if (!socket || !isConnected) {
+      setError("Not connected to server. Please try again.");
+      return;
+    }
+
     try {
       setIsUploading(true);
+      setIsCreatingRoom(true);
+      setError(null);
       setUploadProgress(0);
+      
       let finalPdfUrl = pdfUrl;
       let fileName = 'External PDF';
       let fileSize = 0;
@@ -112,11 +139,13 @@ const PDFPresentationDemo: React.FC = () => {
       localStorage.setItem('presentation-id', presentationDoc.id);
       localStorage.setItem('presentation-pdf-url', finalPdfUrl);
 
-      router.push('/start-presenting');
+      // Create room using socket
+      createRoom();
 
     } catch (error) {
       console.error('Error creating presentation:', error);
-      alert('Failed to create presentation. Please try again.');
+      setError('Failed to create presentation. Please try again.');
+      setIsCreatingRoom(false);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -246,15 +275,31 @@ const PDFPresentationDemo: React.FC = () => {
             </div>
           )}
 
+          {/* Error Display */}
+          {error && (
+            <div style={{
+              marginTop: '16px',
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%)',
+              border: '2px solid rgba(239, 68, 68, 0.5)',
+              color: 'rgba(255, 150, 150, 0.95)',
+              padding: '16px 20px',
+              borderRadius: '12px',
+              backdropFilter: 'blur(10px)',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+            }}>
+              {error}
+            </div>
+          )}
+
           {/* Create Presentation Button */}
           <div style={{ marginTop: '24px' }}>
             <button
               onClick={handleCreatePresentation}
-              disabled={!pdfUrl || isUploading}
+              disabled={!pdfUrl || isUploading || isCreatingRoom || !isConnected || isAnonymous}
               style={{
                 width: '100%',
                 padding: '16px 24px',
-                background: pdfUrl && !isUploading
+                background: (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous)
                   ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                   : 'rgba(100,100,100,0.3)',
                 color: 'white',
@@ -262,20 +307,20 @@ const PDFPresentationDemo: React.FC = () => {
                 borderRadius: '14px',
                 fontSize: '16px',
                 fontWeight: '700',
-                cursor: pdfUrl && !isUploading ? 'pointer' : 'not-allowed',
+                cursor: (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous) ? 'pointer' : 'not-allowed',
                 transition: 'all 0.3s',
-                boxShadow: pdfUrl && !isUploading ? '0 6px 25px rgba(147, 112, 219, 0.5)' : 'none',
+                boxShadow: (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous) ? '0 6px 25px rgba(147, 112, 219, 0.5)' : 'none',
                 textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                opacity: !pdfUrl || isUploading ? 0.5 : 1
+                opacity: (!pdfUrl || isUploading || isCreatingRoom || !isConnected || isAnonymous) ? 0.5 : 1
               }}
               onMouseOver={(e) => {
-                if (pdfUrl && !isUploading) {
+                if (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous) {
                   e.currentTarget.style.transform = 'translateY(-3px)';
                   e.currentTarget.style.boxShadow = '0 10px 35px rgba(147, 112, 219, 0.6)';
                 }
               }}
               onMouseOut={(e) => {
-                if (pdfUrl && !isUploading) {
+                if (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous) {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = '0 6px 25px rgba(147, 112, 219, 0.5)';
                 }
@@ -283,6 +328,12 @@ const PDFPresentationDemo: React.FC = () => {
             >
               {isUploading
                 ? `🚀 Uploading... ${Math.round(uploadProgress)}%`
+                : isCreatingRoom
+                ? '🌟 Creating Room...'
+                : !isConnected
+                ? '🔌 Connecting...'
+                : isAnonymous
+                ? '🔒 Sign In Required'
                 : '✨ Create Presentation'}
             </button>
           </div>
