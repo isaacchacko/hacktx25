@@ -82,6 +82,7 @@ export default function JoinRoomPage() {
   const { user, signOut } = useAuth();
   const { socket, isConnected, isPresenter, isAnonymous, joinRoom, currentRoom } = useSocket();
 
+  
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +95,19 @@ export default function JoinRoomPage() {
     timestamp: number;
   }>>([]);
   const [isTranscriptionCollapsed, setIsTranscriptionCollapsed] = useState(false);
+    // Timer states - ADD THIS
+  const [estimatedTime, setEstimatedTime] = useState<number>(0);
+  const [slideTimings, setSlideTimings] = useState<number[]>([]);
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  const handleTimeUpdate = useCallback((timings: number[], estimatedTotal: number) => {
+    setSlideTimings(timings);
+    setEstimatedTime(estimatedTotal);
+  }, []);
+
 
   // PDF state
   const [pdfUrl, setPdfUrl] = useState<string>('');
@@ -919,6 +933,46 @@ export default function JoinRoomPage() {
                       </button>
                     )}
                     
+
+              {/* PDF Viewer Section */}
+              {pdfUrl && (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+                  backdropFilter: 'blur(15px)',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '24px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
+                }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '12px',
+                        color: 'white'
+                      }}>
+                        <span style={{ fontSize: '28px' }}>⏱️</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ 
+                            fontSize: '18px', 
+                            fontWeight: '700',
+                            textShadow: '0 2px 10px rgba(147, 112, 219, 0.8)',
+                            marginBottom: '4px'
+                          }}>
+                            Estimated Time Remaining: {formatTime(estimatedTime)}
+                          </div>
+                          <div style={{ 
+                            fontSize: '13px', 
+                            color: 'rgba(255,255,255,0.8)',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                          }}>
+                            Based on your presentation pace • Slide {currentPage} of {totalPages}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                     <button
                       onClick={togglePdfViewer}
                       style={{
@@ -1038,6 +1092,15 @@ export default function JoinRoomPage() {
                 </div>
               </div>
             </div>
+            <PDFViewer
+            pdfUrl={pdfUrl}
+            currentPage={currentPage}
+            onPageChange={handlePageChange}
+            onPDFLoad={handleTotalPagesChange}
+            onTimeUpdate={handleTimeUpdate}  // ADD THIS LINE
+            fitMode={fitMode}
+            className="h-full"
+          />
 
             {/* Voice Recording Controls - Only for Presenters */}
             {isPresenter && (

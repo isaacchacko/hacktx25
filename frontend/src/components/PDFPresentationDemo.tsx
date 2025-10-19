@@ -47,6 +47,10 @@ const PDFPresentationDemo: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isCreatingRoom, setIsCreatingRoom] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Timer states
+  const [estimatedTime, setEstimatedTime] = useState<number>(0);
+  const [slideTimings, setSlideTimings] = useState<number[]>([]);
 
   // Listen for room creation and navigate
   useEffect(() => {
@@ -55,6 +59,19 @@ const PDFPresentationDemo: React.FC = () => {
       router.push(`/${currentRoom}`);
     }
   }, [currentRoom, isCreatingRoom, router]);
+
+  // Format time helper
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Handle time updates from PDFViewer
+  const handleTimeUpdate = (timings: number[], estimatedTotal: number) => {
+    setSlideTimings(timings);
+    setEstimatedTime(estimatedTotal);
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -82,13 +99,11 @@ const PDFPresentationDemo: React.FC = () => {
       return;
     }
 
-    // Check if user is anonymous
     if (isAnonymous) {
       setError("Anonymous users cannot create presentations. Please sign in to create a presentation.");
       return;
     }
 
-    // Check socket connection
     if (!socket || !isConnected) {
       setError("Not connected to server. Please try again.");
       return;
@@ -150,12 +165,10 @@ const PDFPresentationDemo: React.FC = () => {
 
       console.log('✅ Presentation saved to Firestore with ID:', presentationDoc.id);
 
-      // Store in localStorage for room access
       localStorage.setItem('presentation-id', presentationDoc.id);
       localStorage.setItem('presentation-pdf-url', finalPdfUrl);
       console.log('💾 Stored presentation data in localStorage');
 
-      // Create room using socket with PDF URL
       console.log('🏠 Creating room with PDF URL:', finalPdfUrl);
       createRoomWithPdf(finalPdfUrl);
 
@@ -182,6 +195,45 @@ const PDFPresentationDemo: React.FC = () => {
         }}>
           ☄️ Stellar PDF Uploader
         </h1>
+
+        {/* Timer Display - ADD THIS */}
+        {totalPages > 0 && pdfUrl && (
+          <div style={{
+            padding: '20px 28px',
+            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.25) 100%)',
+            backdropFilter: 'blur(15px)',
+            borderRadius: '16px',
+            marginBottom: '20px',
+            border: '1px solid rgba(255,255,255,0.3)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '16px',
+              color: 'white'
+            }}>
+              <span style={{ fontSize: '32px' }}>⏱️</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ 
+                  fontSize: '20px', 
+                  fontWeight: '700',
+                  textShadow: '0 2px 10px rgba(147, 112, 219, 0.8)',
+                  marginBottom: '4px'
+                }}>
+                  Estimated Total Time: {formatTime(estimatedTime)}
+                </div>
+                <div style={{ 
+                  fontSize: '14px', 
+                  color: 'rgba(255,255,255,0.8)',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                }}>
+                  Based on your current pace • Slide {currentPage} of {totalPages}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Controls */}
         <div style={{
@@ -363,7 +415,7 @@ const PDFPresentationDemo: React.FC = () => {
             backdropFilter: 'blur(20px)',
             borderRadius: '20px',
             overflow: 'hidden',
-            height: 'calc(100vh - 380px)',
+            height: 'calc(100vh - 500px)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             border: '1px solid rgba(255,255,255,0.2)'
           }}>
@@ -371,6 +423,7 @@ const PDFPresentationDemo: React.FC = () => {
               pdfUrl={pdfUrl}
               onPageChange={setCurrentPage}
               onTotalPagesChange={setTotalPages}
+              onTimeUpdate={handleTimeUpdate}
               className="h-full"
             />
           </div>
@@ -381,7 +434,7 @@ const PDFPresentationDemo: React.FC = () => {
             borderRadius: '20px',
             padding: '80px 40px',
             textAlign: 'center',
-            height: 'calc(100vh - 380px)',
+            height: 'calc(100vh - 500px)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

@@ -1,13 +1,23 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { PDFViewerProps } from '../types/pdf';
+
+interface PDFViewerProps {
+  pdfUrl: string;
+  currentPage: number;
+  onPageChange?: (newPage: number, previousPage: number) => void;
+  onPDFLoad?: (totalPages: number) => void;
+  onTimeUpdate?: (slideTimings: number[], estimatedTotal: number) => void;
+  fitMode?: 'auto' | 'width' | 'height' | 'page';
+  className?: string;
+}
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ 
   pdfUrl, 
   currentPage, 
   onPageChange,
   onPDFLoad,
+  onTimeUpdate,
   fitMode = 'auto',
   className = '' 
 }) => {
@@ -16,12 +26,18 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [canvasReady, setCanvasReady] = useState<boolean>(false);
   const [pdfDocument, setPdfDocument] = useState<any>(null);
+  const prevPageRef = useRef<number>(currentPage);
+
+  // Time tracking state
+  const [slideTimings, setSlideTimings] = useState<number[]>([]);
+  const [currentSlideStartTime, setCurrentSlideStartTime] = useState<number>(Date.now());
 
   // Callback ref to track when canvas is mounted
   const canvasCallbackRef = (canvas: HTMLCanvasElement | null) => {
     canvasRef.current = canvas;
     setCanvasReady(!!canvas);
   };
+
   const [totalPages, setTotalPages] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +48,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     const loadPdfJs = async () => {
       try {
         const pdfjs = await import('pdfjs-dist');
-        
-        // Configure worker
         pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-        
         setPdfjsLib(pdfjs);
       } catch (err) {
         console.error('Error loading PDF.js:', err);
@@ -60,7 +73,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
         setPdfDocument(pdf);
         setTotalPages(pdf.numPages);
         
-        // Notify parent component about PDF load
+        // Initialize slide timings array
+        setSlideTimings(new Array(pdf.numPages).fill(0));
+        
         if (onPDFLoad) {
           onPDFLoad(pdf.numPages);
         }
@@ -73,7 +88,50 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     };
 
     loadPDF();
-  }, [pdfjsLib, pdfUrl, onPageChange]);
+  }, [pdfjsLib, pdfUrl, onPDFLoad]);
+
+  // Track page changes and update timings
+  useEffect(() => {
+    if (prevPageRef.current !== currentPage && totalPages > 0) {
+      const now = Date.now();
+      const timeSpent = now - currentSlideStartTime;
+      const previousPageIndex = prevPageRef.current - 1;
+      
+      // Update timing for the page we're leaving
+      if (previousPageIndex >= 0 && previousPageIndex < slideTimings.length) {
+        setSlideTimings(prev => {
+          const newTimings = [...prev];
+          newTimings[previousPageIndex] = (newTimings[previousPageIndex] || 0) + timeSpent;
+          
+      // Calculate estimated time REMAINING
+      const viewedSlides = newTimings.filter(time => time > 0);
+      const averageTime = viewedSlides.length > 0 
+        ? viewedSlides.reduce((sum, time) => sum + time, 0) / viewedSlides.length 
+        : 0;
+      const remainingSlides = totalPages - currentPage;
+      const estimatedRemaining = Math.round((averageTime * remainingSlides) / 1000);
+
+          
+          // Notify parent component
+          if (onTimeUpdate) {
+            onTimeUpdate(newTimings, estimatedRemaining);
+          }
+          
+          return newTimings;
+        });
+      }
+      
+      // Reset timer for new slide
+      setCurrentSlideStartTime(now);
+      
+      // Notify page change
+      if (onPageChange) {
+        onPageChange(currentPage, prevPageRef.current);
+      }
+      
+      prevPageRef.current = currentPage;
+    }
+  }, [currentPage, totalPages, slideTimings.length, currentSlideStartTime, onPageChange, onTimeUpdate]);
 
   // Render current page
   useEffect(() => {
@@ -106,28 +164,22 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           return;
         }
 
-        // Calculate scale based on fit mode - ALWAYS maintain aspect ratio
         const container = canvas.parentElement;
         const containerWidth = container?.clientWidth || 1200;
         const containerHeight = container?.clientHeight || 800;
         
         const viewport = page.getViewport({ scale: 1 });
-        const pdfAspectRatio = viewport.width / viewport.height;
-        const containerAspectRatio = containerWidth / containerHeight;
         
         let scale = 1;
         
         switch (fitMode) {
           case 'width':
-            // Fit to width - scale so PDF width matches container width
             scale = (containerWidth - 80) / viewport.width;
             break;
           case 'height':
-            // Fit to height - scale so PDF height matches container height
             scale = (containerHeight - 80) / viewport.height;
             break;
           case 'page':
-            // Fit entire page - scale to fit both dimensions (smaller scale wins)
             scale = Math.min(
               (containerWidth - 80) / viewport.width,
               (containerHeight - 80) / viewport.height
@@ -135,40 +187,24 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
             break;
           case 'auto':
           default:
-            // Smart fit - choose the mode that gives the largest readable size
             const widthScale = (containerWidth - 80) / viewport.width;
             const heightScale = (containerHeight - 80) / viewport.height;
             scale = Math.max(widthScale, heightScale);
-            // Cap maximum zoom
             scale = Math.min(scale, 2.0);
             break;
         }
         
         const scaledViewport = page.getViewport({ scale });
-        
-        console.log('Scaling info:', {
-          fitMode,
-          originalSize: { width: viewport.width, height: viewport.height },
-          containerSize: { width: containerWidth, height: containerHeight },
-          pdfAspectRatio: pdfAspectRatio.toFixed(2),
-          containerAspectRatio: containerAspectRatio.toFixed(2),
-          calculatedScale: scale.toFixed(2),
-          finalSize: { width: scaledViewport.width, height: scaledViewport.height }
-        });
 
-        // Set canvas dimensions with proper pixel ratio to prevent blurriness
         const devicePixelRatio = window.devicePixelRatio || 1;
         canvas.width = scaledViewport.width * devicePixelRatio;
         canvas.height = scaledViewport.height * devicePixelRatio;
         
-        // Scale the canvas back down using CSS
         canvas.style.width = scaledViewport.width + 'px';
         canvas.style.height = scaledViewport.height + 'px';
         
-        // Scale the drawing context so everything draws at the correct size
         context.scale(devicePixelRatio, devicePixelRatio);
 
-        // Render page
         const renderContext = {
           canvasContext: context,
           viewport: scaledViewport,
@@ -184,16 +220,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       }
     };
 
-    // Debounce render calls to prevent multiple simultaneous renders
     if (renderTimeoutRef.current) {
       clearTimeout(renderTimeoutRef.current);
     }
 
     renderTimeoutRef.current = setTimeout(() => {
       renderPage();
-    }, 100); // 100ms debounce
+    }, 100);
 
-    // Cleanup function
     return () => {
       if (renderTimeoutRef.current) {
         clearTimeout(renderTimeoutRef.current);
