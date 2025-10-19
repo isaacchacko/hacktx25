@@ -67,11 +67,11 @@ export default function JoinRoomPage() {
   const joinCode = params.joinCode as string;
   const { user, signOut } = useAuth();
   const { socket, isConnected, isPresenter, isAnonymous, joinRoom, currentRoom } = useSocket();
-  
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
-  
+
   // Transcription state
   const [liveTranscription, setLiveTranscription] = useState("");
   const [transcriptionHistory, setTranscriptionHistory] = useState<Array<{
@@ -87,10 +87,10 @@ export default function JoinRoomPage() {
   const [totalPages, setTotalPages] = useState<number>(0);
   const [fitMode, setFitMode] = useState<'width' | 'height' | 'page' | 'auto'>('auto');
   const [showPdfViewer, setShowPdfViewer] = useState<boolean>(false);
-  
+
   // PDF page tracking for presenter
   const [presenterCurrentPage, setPresenterCurrentPage] = useState<number>(1);
-  
+
   // Debug logging for presenter current page changes
   useEffect(() => {
     console.log('📄 Presenter current page updated to:', presenterCurrentPage);
@@ -102,11 +102,11 @@ export default function JoinRoomPage() {
     const storedPdfUrl = localStorage.getItem('presentation-pdf-url');
     if (storedPdfUrl) {
       console.log('📄 Found PDF URL in localStorage:', storedPdfUrl);
-      
+
       // Convert Firebase URL to proxy URL to bypass CORS
       const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(storedPdfUrl)}`;
       console.log('🔄 Using proxy URL for PDF:', proxyUrl);
-      
+
       setPdfUrl(proxyUrl);
       setShowPdfViewer(true);
     } else {
@@ -119,7 +119,7 @@ export default function JoinRoomPage() {
       // Only join the room if we're not already in it
       console.log(`Joining room ${joinCode}, current room: ${currentRoom}`);
       joinRoom(joinCode);
-      
+
       // Request existing questions
       socket.emit("get-questions", joinCode);
     } else if (socket && isConnected && currentRoom === joinCode) {
@@ -136,21 +136,21 @@ export default function JoinRoomPage() {
     const handleJoinedRoom = (data: any) => {
       console.log("Joined room:", data);
       setError(null);
-      
+
       // Handle PDF URL if present in joined room data
       if (data.pdfUrl) {
         console.log("📄 Received PDF URL from joined-room event:", data.pdfUrl);
-        
+
         // Convert Firebase URL to proxy URL to bypass CORS
         const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
         console.log('🔄 Using proxy URL for PDF:', proxyUrl);
-        
+
         setPdfUrl(proxyUrl);
         setShowPdfViewer(true);
         // Store original Firebase URL in localStorage for persistence
         localStorage.setItem('presentation-pdf-url', data.pdfUrl);
       }
-      
+
       // Set initial presenter current page if available
       if (data.currentPage) {
         console.log("📄 Setting initial presenter page:", data.currentPage);
@@ -190,11 +190,11 @@ export default function JoinRoomPage() {
       console.log("Room PDF update:", data);
       if (data.joinCode === joinCode && data.pdfUrl) {
         console.log("📄 Received PDF URL for room:", data.pdfUrl);
-        
+
         // Convert Firebase URL to proxy URL to bypass CORS
         const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
         console.log('🔄 Using proxy URL for PDF:', proxyUrl);
-        
+
         setPdfUrl(proxyUrl);
         setShowPdfViewer(true);
         // Store original Firebase URL in localStorage for persistence
@@ -207,6 +207,9 @@ export default function JoinRoomPage() {
       if (data.joinCode === joinCode) {
         console.log("📄 Updating presenter current page to:", data.currentPage);
         setPresenterCurrentPage(data.currentPage);
+
+        // Note: Attendees can navigate freely - we only update the presenter page indicator
+        // They can use the "Jump to Presenter" button if they want to sync
       }
     };
 
@@ -292,7 +295,7 @@ export default function JoinRoomPage() {
     console.log('Transcription update received:', { transcription, historyLength: history.length });
     setLiveTranscription(transcription);
     setTranscriptionHistory(history);
-    
+
     // Broadcast transcription to other users in the room
     if (socket && transcription) {
       socket.emit('transcription-update', {
@@ -307,7 +310,7 @@ export default function JoinRoomPage() {
   const handlePageChange = useCallback((page: number) => {
     console.log('📄 Page changed to:', page);
     setCurrentPage(page);
-    
+
     // If user is presenter, emit page change to socket server
     if (isPresenter && socket) {
       console.log('📄 Presenter changing page to:', page, 'emitting to socket server');
@@ -371,14 +374,14 @@ export default function JoinRoomPage() {
           <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
             {/* Header */}
             <div style={{
-              background: isPresenter 
+              background: isPresenter
                 ? 'linear-gradient(135deg, rgba(147, 112, 219, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)'
                 : 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
               backdropFilter: 'blur(15px)',
               borderRadius: '16px',
               padding: '24px',
               marginBottom: '24px',
-              border: isPresenter 
+              border: isPresenter
                 ? '2px solid rgba(147, 112, 219, 0.3)'
                 : '2px solid rgba(102, 126, 234, 0.3)',
               boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
@@ -398,7 +401,7 @@ export default function JoinRoomPage() {
                   borderRadius: '20px',
                   fontSize: '14px',
                   fontWeight: 'bold',
-                  background: isPresenter 
+                  background: isPresenter
                     ? 'linear-gradient(135deg, #9370db 0%, #8a2be2 100%)'
                     : 'linear-gradient(135deg, #667eea 0%, #9370db 100%)',
                   color: 'white',
@@ -407,7 +410,7 @@ export default function JoinRoomPage() {
                   {isPresenter ? '🎤 PRESENTER' : '👥 ATTENDEE'}
                 </div>
               </div>
-              
+
               {/* Connection Status */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
                 <div style={{
@@ -468,14 +471,14 @@ export default function JoinRoomPage() {
                         transition: 'all 0.3s',
                         boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
                       }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
-                      }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                        }}
                       >
                         Sign In
                       </button>
@@ -506,35 +509,82 @@ export default function JoinRoomPage() {
                   }}>
                     📄 Presentation PDF
                   </h3>
-                  <button
-                    onClick={togglePdfViewer}
-                    style={{
-                      padding: '8px 16px',
-                      background: showPdfViewer 
-                        ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
-                        : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s',
-                      boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
-                    }}
-                  >
-                    {showPdfViewer ? '🔼 Hide PDF' : '🔽 Show PDF'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {/* Presenter Page Indicator - Only show for attendees */}
+                    {!isPresenter && totalPages > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 12px',
+                        background: 'rgba(147, 112, 219, 0.2)',
+                        border: '1px solid rgba(147, 112, 219, 0.3)',
+                        borderRadius: '20px',
+                        fontSize: '14px',
+                        color: 'white'
+                      }}>
+                        <span style={{ fontSize: '12px', opacity: 0.8 }}>Presenter on:</span>
+                        <span style={{ fontWeight: '600' }}>Page {presenterCurrentPage}</span>
+                        {currentPage !== presenterCurrentPage && (
+                          <button
+                            onClick={() => handlePageChange(presenterCurrentPage)}
+                            style={{
+                              padding: '4px 8px',
+                              background: 'linear-gradient(135deg, #9370db 0%, #8a2be2 100%)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.3s',
+                              boxShadow: '0 2px 8px rgba(147, 112, 219, 0.4)'
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 112, 219, 0.6)';
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(147, 112, 219, 0.4)';
+                            }}
+                          >
+                            Jump to Presenter
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={togglePdfViewer}
+                      style={{
+                        padding: '8px 16px',
+                        background: showPdfViewer
+                          ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
+                          : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+                      }}
+                    >
+                      {showPdfViewer ? '🔼 Hide PDF' : '🔽 Show PDF'}
+                    </button>
+                  </div>
                 </div>
-                
+
                 {showPdfViewer && (
                   <div style={{
                     background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
@@ -552,7 +602,7 @@ export default function JoinRoomPage() {
                         className="flex-shrink-0"
                       />
                     )}
-                    
+
                     {/* PDF Viewer */}
                     <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, height: 'calc(100% - 120px)' }}>
                       <PDFViewer
@@ -567,12 +617,15 @@ export default function JoinRoomPage() {
 
                     {/* PDF Navigation */}
                     {totalPages > 0 && (
-                      <PDFNavigation
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={handlePageChange}
-                        className="flex-shrink-0"
-                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+                        <PDFNavigation
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={handlePageChange}
+                          className="flex-shrink-0"
+                        />
+                      </div>
                     )}
                   </div>
                 )}
@@ -581,14 +634,14 @@ export default function JoinRoomPage() {
 
             {/* Role Instructions */}
             <div style={{
-              background: isPresenter 
+              background: isPresenter
                 ? 'linear-gradient(135deg, rgba(147, 112, 219, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)'
                 : 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
               backdropFilter: 'blur(15px)',
               borderRadius: '16px',
               padding: '20px',
               marginBottom: '24px',
-              borderLeft: isPresenter 
+              borderLeft: isPresenter
                 ? '4px solid rgba(147, 112, 219, 0.6)'
                 : '4px solid rgba(102, 126, 234, 0.6)',
               boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
@@ -613,7 +666,7 @@ export default function JoinRoomPage() {
                     color: 'rgba(255,255,255,0.85)',
                     lineHeight: '1.5'
                   }}>
-                    {isPresenter 
+                    {isPresenter
                       ? 'You can mark questions as answered/unanswered. You cannot vote on questions.'
                       : 'You can ask questions and vote on unanswered questions. You cannot mark questions as answered.'
                     }
@@ -675,16 +728,16 @@ export default function JoinRoomPage() {
                   borderRadius: '20px',
                   fontSize: '14px',
                   fontWeight: '500',
-                  background: isPresenter 
+                  background: isPresenter
                     ? 'rgba(147, 112, 219, 0.2)'
                     : 'rgba(102, 126, 234, 0.2)',
                   color: 'white',
-                  border: isPresenter 
+                  border: isPresenter
                     ? '1px solid rgba(147, 112, 219, 0.3)'
                     : '1px solid rgba(102, 126, 234, 0.3)'
                 }}>
-                  {isPresenter 
-                    ? '🎤 You can mark questions as answered' 
+                  {isPresenter
+                    ? '🎤 You can mark questions as answered'
                     : '👥 You can vote on unanswered questions'
                   }
                 </div>
@@ -719,10 +772,10 @@ export default function JoinRoomPage() {
                       <div key={question.id} style={{
                         padding: '16px',
                         borderRadius: '12px',
-                        background: question.answered 
+                        background: question.answered
                           ? 'linear-gradient(135deg, rgba(40, 167, 69, 0.2) 0%, rgba(32, 201, 151, 0.2) 100%)'
                           : 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-                        border: question.answered 
+                        border: question.answered
                           ? '1px solid rgba(40, 167, 69, 0.3)'
                           : '1px solid rgba(255,255,255,0.1)',
                         backdropFilter: 'blur(10px)',
@@ -796,7 +849,7 @@ export default function JoinRoomPage() {
                                     borderRadius: '8px',
                                     border: 'none',
                                     cursor: isConnected ? 'pointer' : 'not-allowed',
-                                    background: question.answered 
+                                    background: question.answered
                                       ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
                                       : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
                                     color: 'white',
@@ -839,11 +892,11 @@ export default function JoinRoomPage() {
                                         ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
                                         : 'rgba(40, 167, 69, 0.2)',
                                       color: userVote === "upvote" ? 'white' : 'rgba(255,255,255,0.8)',
-                                      border: userVote === "upvote" 
+                                      border: userVote === "upvote"
                                         ? '1px solid rgba(40, 167, 69, 0.5)'
                                         : '1px solid rgba(40, 167, 69, 0.3)',
                                       opacity: (!isConnected || question.answered) ? 0.5 : 1,
-                                      boxShadow: userVote === "upvote" 
+                                      boxShadow: userVote === "upvote"
                                         ? '0 4px 15px rgba(40, 167, 69, 0.4)'
                                         : '0 2px 8px rgba(0,0,0,0.2)'
                                     }}
@@ -881,11 +934,11 @@ export default function JoinRoomPage() {
                                         ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
                                         : 'rgba(220, 53, 69, 0.2)',
                                       color: userVote === "downvote" ? 'white' : 'rgba(255,255,255,0.8)',
-                                      border: userVote === "downvote" 
+                                      border: userVote === "downvote"
                                         ? '1px solid rgba(220, 53, 69, 0.5)'
                                         : '1px solid rgba(220, 53, 69, 0.3)',
                                       opacity: (!isConnected || question.answered) ? 0.5 : 1,
-                                      boxShadow: userVote === "downvote" 
+                                      boxShadow: userVote === "downvote"
                                         ? '0 4px 15px rgba(220, 53, 69, 0.4)'
                                         : '0 2px 8px rgba(0,0,0,0.2)'
                                     }}
@@ -911,8 +964,8 @@ export default function JoinRoomPage() {
                                 </div>
                               );
                             })()}
-                      </div>
-                    </div>
+                          </div>
+                        </div>
                         <div style={{
                           display: 'flex',
                           justifyContent: 'space-between',
@@ -940,22 +993,22 @@ export default function JoinRoomPage() {
                             {new Date(question.createdAt).toLocaleTimeString()}
                           </span>
                         </div>
-                  </div>
-                ))
-            )}
-          </div>
-        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
 
             {/* Question Input */}
             <div style={{
-              background: isPresenter 
+              background: isPresenter
                 ? 'linear-gradient(135deg, rgba(147, 112, 219, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)'
                 : 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
               backdropFilter: 'blur(15px)',
               borderRadius: '16px',
               padding: '24px',
               marginBottom: '24px',
-              border: isPresenter 
+              border: isPresenter
                 ? '1px solid rgba(147, 112, 219, 0.3)'
                 : '1px solid rgba(102, 126, 234, 0.3)',
               boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
@@ -974,11 +1027,11 @@ export default function JoinRoomPage() {
                   fontSize: '14px',
                   padding: '4px 8px',
                   borderRadius: '12px',
-                  background: isPresenter 
+                  background: isPresenter
                     ? 'rgba(147, 112, 219, 0.2)'
                     : 'rgba(102, 126, 234, 0.2)',
                   color: 'white',
-                  border: isPresenter 
+                  border: isPresenter
                     ? '1px solid rgba(147, 112, 219, 0.3)'
                     : '1px solid rgba(102, 126, 234, 0.3)'
                 }}>
@@ -991,8 +1044,8 @@ export default function JoinRoomPage() {
                   value={newQuestion}
                   onChange={(e) => setNewQuestion(e.target.value)}
                   onKeyPress={handleQuestionKeyPress}
-                  placeholder={isPresenter 
-                    ? "Ask a question as the presenter..." 
+                  placeholder={isPresenter
+                    ? "Ask a question as the presenter..."
                     : "Ask a question as an attendee..."
                   }
                   style={{
