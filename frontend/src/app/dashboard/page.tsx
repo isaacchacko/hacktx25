@@ -3,6 +3,7 @@
 import { useState, ChangeEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from "../context/AuthContext";
+import Navbar from "../../components/Navbar";
 
 interface Presentation {
   id: number;
@@ -43,67 +44,7 @@ export default function PresenterDashboard() {
       }} />
 
       <div style={{ position: 'relative', zIndex: 1 }}>
-        {/* Header */}
-        <header style={{
-          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
-          backdropFilter: 'blur(15px)',
-          padding: '22px 45px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: '1px solid rgba(255,255,255,0.1)'
-        }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <h1 style={{ 
-              color: 'white', 
-              margin: 0, 
-              fontSize: '28px',
-              textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              transition: 'all 0.3s'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.textShadow = '0 0 30px rgba(147, 112, 219, 1)'}
-            onMouseOut={(e) => e.currentTarget.style.textShadow = '0 0 20px rgba(147, 112, 219, 0.8)'}
-            >
-              <span style={{ fontSize: '36px' }}>🌟</span> Stellar Dashboard
-            </h1>
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
-          <span style={{ color: 'rgba(255,255,255,0.8)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-            👤 {user?.displayName || user?.email}
-          </span>
-
-            <Link href="/auth">
-              <button style={{
-                padding: '12px 24px',
-                background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
-                color: 'white',
-                border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: '20px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                boxShadow: '0 4px 15px rgba(220, 53, 69, 0.4)',
-                transition: 'all 0.3s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(220, 53, 69, 0.6)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(220, 53, 69, 0.4)';
-              }}
-              >
-                Logout
-              </button>
-            </Link>
-          </div>
-        </header>
+        <Navbar />
 
         <div style={{
           maxWidth: '1200px',
@@ -120,9 +61,9 @@ export default function PresenterDashboard() {
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             border: '1px solid rgba(255,255,255,0.15)'
           }}>
-            <h2 style={{ 
-              color: 'white', 
-              marginBottom: '25px', 
+            <h2 style={{
+              color: 'white',
+              marginBottom: '25px',
               fontSize: '24px',
               textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
               display: 'flex',
@@ -142,16 +83,16 @@ export default function PresenterDashboard() {
               transition: 'all 0.3s',
               marginBottom: '25px'
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(147, 112, 219, 0.8)';
-              e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)';
-              e.currentTarget.style.boxShadow = '0 0 30px rgba(147, 112, 219, 0.3)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(147, 112, 219, 0.5)';
-              e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(147, 112, 219, 0.8)';
+                e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)';
+                e.currentTarget.style.boxShadow = '0 0 30px rgba(147, 112, 219, 0.3)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(147, 112, 219, 0.5)';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <input
                 type="file"
@@ -188,14 +129,14 @@ export default function PresenterDashboard() {
                 boxShadow: '0 6px 25px rgba(40, 167, 69, 0.4)',
                 textShadow: '0 2px 4px rgba(0,0,0,0.3)'
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-3px)';
-                e.currentTarget.style.boxShadow = '0 10px 35px rgba(40, 167, 69, 0.6)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 6px 25px rgba(40, 167, 69, 0.4)';
-              }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 10px 35px rgba(40, 167, 69, 0.6)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 6px 25px rgba(40, 167, 69, 0.4)';
+                }}
               >
                 🚀 Launch to Universe
               </button>
@@ -211,9 +152,9 @@ export default function PresenterDashboard() {
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             border: '1px solid rgba(255,255,255,0.15)'
           }}>
-            <h2 style={{ 
-              color: 'white', 
-              marginBottom: '30px', 
+            <h2 style={{
+              color: 'white',
+              marginBottom: '30px',
               fontSize: '24px',
               textShadow: '0 0 20px rgba(147, 112, 219, 0.8)',
               display: 'flex',
@@ -237,14 +178,14 @@ export default function PresenterDashboard() {
                   transition: 'all 0.3s',
                   backdropFilter: 'blur(10px)'
                 }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-8px)';
-                  e.currentTarget.style.boxShadow = '0 15px 40px rgba(102, 126, 234, 0.4)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)';
+                    e.currentTarget.style.boxShadow = '0 15px 40px rgba(102, 126, 234, 0.4)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
                   <div style={{ fontSize: '48px', marginBottom: '15px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))' }}>
                     📄
@@ -268,9 +209,9 @@ export default function PresenterDashboard() {
                     color: 'rgba(255,255,255,0.7)'
                   }}>
                     <span>
-                      Code: <strong style={{ 
-                        color: '#9370db', 
-                        fontFamily: 'monospace', 
+                      Code: <strong style={{
+                        color: '#9370db',
+                        fontFamily: 'monospace',
                         fontSize: '16px',
                         textShadow: '0 0 10px rgba(147, 112, 219, 0.8)'
                       }}>
@@ -293,14 +234,14 @@ export default function PresenterDashboard() {
                     boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
                     textShadow: '0 2px 4px rgba(0,0,0,0.3)'
                   }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
-                  }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                    }}
                   >
                     🚀 Launch Presentation
                   </button>

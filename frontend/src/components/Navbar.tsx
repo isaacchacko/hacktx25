@@ -44,49 +44,7 @@ export default function Navbar() {
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <Link
-          href="/"
-          style={{
-            color: 'rgba(255,255,255,0.8)',
-            textDecoration: 'none',
-            fontSize: '16px',
-            fontWeight: '500',
-            transition: 'all 0.3s',
-            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.color = 'white';
-            e.currentTarget.style.textShadow = '0 0 15px rgba(147, 112, 219, 0.8)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
-            e.currentTarget.style.textShadow = '0 2px 4px rgba(0,0,0,0.5)';
-          }}
-        >
-          Home
-        </Link>
 
-        <Link
-          href="/upload"
-          style={{
-            color: 'rgba(255,255,255,0.8)',
-            textDecoration: 'none',
-            fontSize: '16px',
-            fontWeight: '500',
-            transition: 'all 0.3s',
-            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.color = 'white';
-            e.currentTarget.style.textShadow = '0 0 15px rgba(147, 112, 219, 0.8)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
-            e.currentTarget.style.textShadow = '0 2px 4px rgba(0,0,0,0.5)';
-          }}
-        >
-          Upload PDF
-        </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {user ? (
@@ -140,14 +98,14 @@ export default function Navbar() {
                 boxShadow: '0 4px 20px rgba(147, 112, 219, 0.4)',
                 textShadow: '0 2px 4px rgba(0,0,0,0.2)'
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 6px 30px rgba(147, 112, 219, 0.6)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(147, 112, 219, 0.4)';
-              }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 6px 30px rgba(147, 112, 219, 0.6)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(147, 112, 219, 0.4)';
+                }}
               >
                 ✨ Sign In
               </button>
