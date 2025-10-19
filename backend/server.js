@@ -1,10 +1,12 @@
 
+require('dotenv').config();
 const express = require("express");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 const admin = require("firebase-admin");
+const TranscriptService = require("./services/transcriptService");
 
 const app = express();
 const server = createServer(app);
@@ -49,6 +51,21 @@ const rooms = new Map();
 
 // Store user sessions and their associated data
 const userSessions = new Map();
+
+// Initialize transcript service
+const transcriptService = new TranscriptService();
+transcriptService.setSocketIO(io);
+
+// Create a test room for debugging
+const testRoomCode = 'TEST123';
+rooms.set(testRoomCode, {
+  members: new Set(),
+  createdAt: new Date(),
+  questions: [],
+  presenterId: 'test-presenter',
+  presenterEmail: 'test@example.com'
+});
+console.log(`Test room ${testRoomCode} created for debugging`);
 
 // Helper function to verify Firebase token
 async function verifyFirebaseToken(token) {
@@ -410,6 +427,236 @@ io.on("connection", (socket) => {
 
     // Broadcast updated question to all members in the room
     io.to(joinCode).emit("question-updated", question);
+  });
+
+  // Handle starting transcription (presenter only)
+  socket.on("start-transcription", async (data) => {
+    const { joinCode, deviceType = 'computer' } = data;
+    
+    if (!joinCode) {
+      socket.emit("error", "Join code is required");
+      return;
+    }
+
+    if (!rooms.has(joinCode)) {
+      socket.emit("error", "Room not found");
+      return;
+    }
+
+    const room = rooms.get(joinCode);
+    
+    // Check if user is the presenter (allow test presenter for debugging)
+    if (room.presenterId !== socket.userId && room.presenterId !== 'test-presenter') {
+      socket.emit("error", "Only the presenter can start transcription");
+      return;
+    }
+
+    // Check if transcription is already active
+    if (transcriptService.isTranscriptionActive(joinCode)) {
+      socket.emit("error", "Transcription is already active for this room");
+      return;
+    }
+
+    try {
+      const result = await transcriptService.startTranscription(joinCode, socket.userId, deviceType);
+      
+      if (result.success) {
+        socket.emit("transcription-started", result);
+        io.to(joinCode).emit("transcription-status", {
+          isActive: true,
+          deviceType: deviceType,
+          presenterId: socket.userId
+        });
+      } else {
+        socket.emit("error", result.error);
+      }
+    } catch (error) {
+      console.error("Error starting transcription:", error);
+      socket.emit("error", "Failed to start transcription");
+    }
+  });
+
+  // Handle stopping transcription (presenter only)
+  socket.on("stop-transcription", async (data) => {
+    const { joinCode } = data;
+    
+    if (!joinCode) {
+      socket.emit("error", "Join code is required");
+      return;
+    }
+
+    if (!rooms.has(joinCode)) {
+      socket.emit("error", "Room not found");
+      return;
+    }
+
+    const room = rooms.get(joinCode);
+    
+    // Check if user is the presenter
+    if (room.presenterId !== socket.userId) {
+      socket.emit("error", "Only the presenter can stop transcription");
+      return;
+    }
+
+    try {
+      await transcriptService.endTranscription(joinCode);
+      socket.emit("transcription-stopped", { joinCode });
+      io.to(joinCode).emit("transcription-status", {
+        isActive: false,
+        presenterId: socket.userId
+      });
+    } catch (error) {
+      console.error("Error stopping transcription:", error);
+      socket.emit("error", "Failed to stop transcription");
+    }
+  });
+
+  // Handle slide change for transcript association
+  socket.on("slide-changed", (data) => {
+    const { joinCode, slideNumber } = data;
+    
+    if (!joinCode || !slideNumber) {
+      socket.emit("error", "Join code and slide number are required");
+      return;
+    }
+
+    if (!rooms.has(joinCode)) {
+      socket.emit("error", "Room not found");
+      return;
+    }
+
+    const room = rooms.get(joinCode);
+    
+    // Check if user is the presenter
+    if (room.presenterId !== socket.userId) {
+      socket.emit("error", "Only the presenter can change slides");
+      return;
+    }
+
+    // Update current slide in transcript service
+    transcriptService.updateCurrentSlide(joinCode, slideNumber);
+    
+    // Broadcast slide change to all room members
+    io.to(joinCode).emit("slide-updated", {
+      slideNumber,
+      timestamp: new Date()
+    });
+  });
+
+  // Handle requesting transcript data
+  socket.on("get-transcript", (data) => {
+    const { joinCode, slideNumber } = data;
+    
+    if (!joinCode) {
+      socket.emit("error", "Join code is required");
+      return;
+    }
+
+    if (!rooms.has(joinCode)) {
+      socket.emit("error", "Room not found");
+      return;
+    }
+
+    try {
+      const transcript = transcriptService.getTranscript(joinCode, slideNumber);
+      const sessionInfo = transcriptService.getSessionInfo(joinCode);
+      
+      socket.emit("transcript-data", {
+        transcript,
+        sessionInfo,
+        slideNumber
+      });
+    } catch (error) {
+      console.error("Error getting transcript:", error);
+      socket.emit("error", "Failed to get transcript data");
+    }
+  });
+
+  // Handle requesting slide-specific transcripts
+  socket.on("get-slide-transcripts", (data) => {
+    const { joinCode } = data;
+    
+    if (!joinCode) {
+      socket.emit("error", "Join code is required");
+      return;
+    }
+
+    if (!rooms.has(joinCode)) {
+      socket.emit("error", "Room not found");
+      return;
+    }
+
+    try {
+      const slideTranscripts = transcriptService.getSlideTranscripts(joinCode);
+      const sessionInfo = transcriptService.getSessionInfo(joinCode);
+      
+      socket.emit("slide-transcripts-data", {
+        slideTranscripts: Object.fromEntries(slideTranscripts),
+        sessionInfo
+      });
+    } catch (error) {
+      console.error("Error getting slide transcripts:", error);
+      socket.emit("error", "Failed to get slide transcript data");
+    }
+  });
+
+  // Handle audio data from frontend
+  socket.on("audio-data", (data) => {
+    const { joinCode, audioData, deviceType } = data;
+    
+    console.log('🎤 Received audio data:', {
+      joinCode,
+      audioDataLength: audioData?.length || 0,
+      deviceType,
+      hasRoom: rooms.has(joinCode),
+      availableRooms: Array.from(rooms.keys())
+    });
+    
+    if (!joinCode || !audioData) {
+      console.log('❌ Missing joinCode or audioData');
+      socket.emit("error", "Join code and audio data are required");
+      return;
+    }
+
+    if (!rooms.has(joinCode)) {
+      console.log('❌ Room not found:', joinCode);
+      socket.emit("error", "Room not found");
+      return;
+    }
+
+    // Process audio data through transcript service
+    console.log('✅ Processing audio data for room:', joinCode);
+    transcriptService.processAudioData(joinCode, audioData);
+  });
+
+  // Handle requesting transcription status
+  socket.on("get-transcription-status", (data) => {
+    const { joinCode } = data;
+    
+    if (!joinCode) {
+      socket.emit("error", "Join code is required");
+      return;
+    }
+
+    if (!rooms.has(joinCode)) {
+      socket.emit("error", "Room not found");
+      return;
+    }
+
+    try {
+      const isActive = transcriptService.isTranscriptionActive(joinCode);
+      const sessionInfo = transcriptService.getSessionInfo(joinCode);
+      const delay = transcriptService.getTranscriptionDelay(joinCode);
+      
+      socket.emit("transcription-status-response", {
+        isActive,
+        sessionInfo,
+        delay
+      });
+    } catch (error) {
+      console.error("Error getting transcription status:", error);
+      socket.emit("error", "Failed to get transcription status");
+    }
   });
 
   // Handle disconnection

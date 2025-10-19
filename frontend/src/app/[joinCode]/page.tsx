@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSocket } from "../../hooks/useSocket";
 import { useAuth } from "../context/AuthContext";
+import { useTranscript } from "../../hooks/useTranscript";
+import TranscriptDisplay from "../../components/TranscriptDisplay";
+import PresenterTranscriptControls from "../../components/PresenterTranscriptControls";
+import AudioStreamer from "../../components/AudioStreamer";
 
 interface Question {
   id: string;
@@ -28,17 +32,32 @@ export default function JoinRoomPage() {
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Transcript functionality
+  const {
+    transcript,
+    isTranscribing,
+    currentSlide,
+    delay,
+    sessionInfo,
+    error: transcriptError,
+    startTranscription,
+    stopTranscription,
+    updateSlide,
+    getTranscriptForSlide,
+    downloadTranscript
+  } = useTranscript({ joinCode, isPresenter, socket });
+
   useEffect(() => {
     if (socket && isConnected && currentRoom !== joinCode) {
       // Only join the room if we're not already in it
-      console.log(`Joining room ${joinCode}, current room: ${currentRoom}`);
+      console.log(`🔗 Joining Socket.IO room ${joinCode}, current room: ${currentRoom}`);
       joinRoom(joinCode);
       
       // Request existing questions
       socket.emit("get-questions", joinCode);
     } else if (socket && isConnected && currentRoom === joinCode) {
       // We're already in this room, just request questions
-      console.log(`Already in room ${joinCode}, requesting questions`);
+      console.log(`✅ Already in Socket.IO room ${joinCode}, requesting questions`);
       socket.emit("get-questions", joinCode);
     }
   }, [socket, isConnected, joinCode, currentRoom]); // Removed user dependency
@@ -209,6 +228,46 @@ export default function JoinRoomPage() {
           </div>
         </div>
 
+        {/* Transcript Error Display */}
+        {transcriptError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            Transcript Error: {transcriptError}
+          </div>
+        )}
+
+        {/* Presenter Transcript Controls */}
+        {isPresenter && (
+          <PresenterTranscriptControls
+            joinCode={joinCode}
+            isPresenter={isPresenter}
+            onTranscriptionStart={startTranscription}
+            onTranscriptionStop={stopTranscription}
+            onSlideChange={updateSlide}
+            className="mb-6"
+          />
+        )}
+
+        {/* Audio Streamer for Presenter */}
+        {isPresenter && isTranscribing && (
+          <AudioStreamer
+            socket={socket}
+            joinCode={joinCode}
+            isActive={isTranscribing}
+            onError={(error) => console.error('Audio streaming error:', error)}
+          />
+        )}
+
+        {/* Transcript Display for Attendees */}
+        {!isPresenter && (
+          <TranscriptDisplay
+            transcript={transcript}
+            isActive={isTranscribing}
+            delay={delay}
+            currentSlide={currentSlide}
+            className="mb-6"
+          />
+        )}
+
         {/* Questions */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -374,6 +433,52 @@ export default function JoinRoomPage() {
             Press Enter to ask, or click the Ask button. Questions will be visible to all members in the room.
           </p>
         </div>
+
+        {/* Transcript Download for Attendees */}
+        {!isPresenter && transcript.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Download Transcript</h3>
+              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                📄 {transcript.length} entries
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Download the complete transcript with slide associations for your records.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={downloadTranscript}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              >
+                📥 Download Transcript
+              </button>
+              <button
+                onClick={() => {
+                  const slideTranscripts = getTranscriptForSlide(currentSlide);
+                  if (slideTranscripts.length > 0) {
+                    // Create a temporary transcript with only current slide
+                    const tempTranscript = slideTranscripts;
+                    const content = JSON.stringify(tempTranscript, null, 2);
+                    const blob = new Blob([content], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `transcript-slide-${currentSlide}-${joinCode}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                  }
+                }}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+              >
+                📄 Current Slide Only
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Testing Instructions */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mt-6">
           <h3 className="text-lg font-semibold text-yellow-800 mb-2">Testing Instructions</h3>
@@ -385,6 +490,9 @@ export default function JoinRoomPage() {
             <li>• Users can change or remove their votes</li>
             <li>• Presenters can mark questions as answered/unanswered</li>
             <li>• Participants can vote on unanswered questions only</li>
+            <li>• <strong>NEW:</strong> Presenters can start live transcription with device selection</li>
+            <li>• <strong>NEW:</strong> Attendees can view live captions and download transcripts</li>
+            <li>• <strong>NEW:</strong> Transcripts are linked to specific slides for better context</li>
             <li>• Watch the member count update as users join/leave</li>
             <li>• Try refreshing tabs to see reconnection behavior</li>
           </ul>
