@@ -179,6 +179,8 @@ export interface QuestionSuggestionsContext {
   currentPage?: number;
   totalPages?: number;
   recentQuestions?: string[];
+  transcriptionText?: string;
+  transcriptionHistory?: Array<{text: string; confidence: number; timestamp: number}>;
 }
 
 /**
@@ -316,6 +318,21 @@ export async function getQuestionSuggestions(
         ? context.slideText.substring(0, 1000) + '...' 
         : context.slideText;
       contextInfo += `\n\nCURRENT SLIDE (${context.currentPage}/${context.totalPages}):\n${trimmedSlideText}`;
+    }
+    
+    if (context?.transcriptionText) {
+      const trimmedTranscription = context.transcriptionText.length > 500 
+        ? context.transcriptionText.substring(0, 500) + '...' 
+        : context.transcriptionText;
+      contextInfo += `\n\nCURRENT PRESENTATION TRANSCRIPTION:\n${trimmedTranscription}`;
+    }
+    
+    if (context?.transcriptionHistory && context.transcriptionHistory.length > 0) {
+      const recentTranscriptions = context.transcriptionHistory
+        .slice(-3) // Last 3 transcriptions
+        .map(t => t.text)
+        .join('\n');
+      contextInfo += `\n\nRECENT PRESENTATION TRANSCRIPTIONS:\n${recentTranscriptions}`;
     }
     
     if (context?.recentQuestions && context.recentQuestions.length > 0) {

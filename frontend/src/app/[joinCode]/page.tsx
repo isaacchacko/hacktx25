@@ -377,7 +377,7 @@ export default function JoinRoomPage() {
         // Determine active page for context
         const activePage = isPresenter ? currentPage : presenterCurrentPage;
         
-        // Build context with PDF information
+        // Build context with PDF and transcription information
         const context: QuestionSuggestionsContext = {
           recentQuestions,
           overallSummary: pdfSummary || undefined,
@@ -385,6 +385,10 @@ export default function JoinRoomPage() {
           totalPages: totalPages || undefined,
           slideText: (pdfPageTexts.length > 0 && activePage > 0) 
             ? pdfPageTexts[activePage - 1] 
+            : undefined,
+          transcriptionText: liveTranscription || undefined,
+          transcriptionHistory: transcriptionHistory.length > 0 
+            ? transcriptionHistory.slice(-3) // Last 3 transcriptions
             : undefined
         };
 
@@ -393,6 +397,8 @@ export default function JoinRoomPage() {
           totalPages,
           hasSummary: !!pdfSummary,
           hasSlideText: !!context.slideText,
+          hasTranscription: !!context.transcriptionText,
+          transcriptionHistoryCount: context.transcriptionHistory?.length || 0,
           recentQuestionsCount: recentQuestions.length
         });
 
@@ -425,14 +431,24 @@ export default function JoinRoomPage() {
           setIsSuggesting(false);
         }
       }
-    }, 300); // 300ms debounce
+    }, 150); // 150ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [newQuestion, questions, pdfSummary, pdfPageTexts, currentPage, presenterCurrentPage, totalPages, isPresenter]);
+  }, [newQuestion, questions, pdfSummary, pdfPageTexts, currentPage, presenterCurrentPage, totalPages, isPresenter, liveTranscription, transcriptionHistory]);
 
   const handleSuggestionClick = (suggestion: string) => {
+    // Set the question and immediately submit it
     setNewQuestion(suggestion);
     setShowSuggestions(false);
+    
+    // Submit the question automatically
+    if (socket && suggestion.trim()) {
+      socket.emit("post-question", {
+        question: suggestion.trim(),
+        joinCode: joinCode
+      });
+      setNewQuestion(""); // Clear the input after sending
+    }
   };
 
   // Handle transcription updates from voice recording
