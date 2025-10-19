@@ -324,45 +324,6 @@ const PDFPresentationDemo: React.FC = () => {
           ☄️ Stellar PDF Uploader
         </h1>
 
-        {/* Timer Display - ADD THIS */}
-        {totalPages > 0 && pdfUrl && (
-          <div style={{
-            padding: '20px 28px',
-            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.25) 100%)',
-            backdropFilter: 'blur(15px)',
-            borderRadius: '16px',
-            marginBottom: '20px',
-            border: '1px solid rgba(255,255,255,0.3)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              color: 'white'
-            }}>
-              <span style={{ fontSize: '32px' }}>⏱️</span>
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  textShadow: '0 2px 10px rgba(147, 112, 219, 0.8)',
-                  marginBottom: '4px'
-                }}>
-                  Estimated Total Time: {formatTime(estimatedTime)}
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  color: 'rgba(255,255,255,0.8)',
-                  textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-                }}>
-                  Based on your current pace • Slide {currentPage} of {totalPages}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Controls */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
