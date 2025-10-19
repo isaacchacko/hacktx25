@@ -11,6 +11,7 @@ import { VoiceRecordingControls } from "../../components/VoiceRecordingControls"
 import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
 import AIInsightsPanel from "../../components/AIInsightsPanel";
 import { generateMultipleSummaries, SummaryRequest, getQuestionSuggestions, QuestionSuggestionsContext } from "../../utils/geminiApi";
+import { usePresentationTimer } from "../../hooks/usePresentationTimer";
 
 // Dynamically import PDF components to prevent SSR issues
 const PDFViewer = dynamic(() => import("../../components/PDFViewer"), {
@@ -133,6 +134,46 @@ export default function JoinRoomPage() {
   const [transcriptionsByPage, setTranscriptionsByPage] = useState<{ [pageNumber: number]: PageTranscription }>({});
   const [viewByPage, setViewByPage] = useState(false); // Toggle between views
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Slide timer for presentation timing
+  const { 
+    isRecording: isTimerRecording,
+    totalRecordingTime,
+    slideTimings, 
+    estimatedTotalTime, 
+    startRecording: startTimer,
+    stopRecording: stopTimer,
+    onSlideChange, 
+    resetTimer, 
+    formatTime 
+  } = usePresentationTimer(totalPages, currentPage);
+
+  // Add state to track if recording has started
+  const [hasStartedRecording, setHasStartedRecording] = useState(false);
+
+  // Add state for fullscreen mode
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Add function to toggle fullscreen
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  // Add useEffect to handle fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
   
   // AI Insights trigger function
   const triggerAIInsights = useCallback(async (questionsList: Question[]) => {
@@ -618,6 +659,24 @@ export default function JoinRoomPage() {
     }
   };
 
+  // Handle recording start - start the timer immediately
+  const handleRecordingStart = useCallback(() => {
+    if (!hasStartedRecording) {
+      console.log('🎤 Recording started, initializing presentation timer');
+      startTimer();
+      setHasStartedRecording(true);
+    }
+  }, [hasStartedRecording, startTimer]);
+
+  // Handle recording stop - stop the timer
+  const handleRecordingStop = useCallback(() => {
+    if (hasStartedRecording) {
+      console.log('⏹️ Recording stopped, stopping presentation timer');
+      stopTimer();
+      setHasStartedRecording(false);
+    }
+  }, [hasStartedRecording, stopTimer]);
+
   // Handle transcription updates from voice recording
   const handleTranscriptionUpdate = useCallback((transcription: string, history: Array<{
     text: string;
@@ -625,6 +684,7 @@ export default function JoinRoomPage() {
     timestamp: number;
   }>) => {
     console.log('Transcription update received:', { transcription, historyLength: history.length });
+    
     setLiveTranscription(transcription);
     setTranscriptionHistory(history);
 
@@ -669,6 +729,9 @@ export default function JoinRoomPage() {
   const handlePageChange = useCallback((page: number) => {
     console.log('📄 Page changed to:', page);
     
+    // Update slide timer
+    onSlideChange(page);
+    
     // Finalize previous page's transcription
     if (currentPage !== page && transcriptionsByPage[currentPage]) {
       setTranscriptionsByPage(prev => ({
@@ -699,7 +762,7 @@ export default function JoinRoomPage() {
         joinCode: joinCode
       });
     }
-  }, [currentPage, transcriptionsByPage, isPresenter, socket, joinCode]);
+  }, [currentPage, transcriptionsByPage, onSlideChange, isPresenter, socket, joinCode]);
 
   const handleTotalPagesChange = useCallback((pages: number) => {
     console.log('📄 Total pages:', pages);
@@ -879,6 +942,43 @@ export default function JoinRoomPage() {
                     Presentation PDF
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {/* Enhanced Timer Display */}
+                    {totalPages > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 12px',
+                        background: isTimerRecording 
+                          ? 'linear-gradient(135deg, rgba(40, 167, 69, 0.15) 0%, rgba(34, 139, 34, 0.15) 100%)'
+                          : 'linear-gradient(135deg, rgba(147, 112, 219, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+                        border: isTimerRecording 
+                          ? '1px solid rgba(40, 167, 69, 0.3)'
+                          : '1px solid rgba(147, 112, 219, 0.3)',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        color: 'rgba(255,255,255,0.9)',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                      }}>
+                        <span style={{ 
+                          fontSize: '14px', 
+                          opacity: 0.8,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          {isTimerRecording ? '🔴' : '⏱️'}
+                        </span>
+                        <span style={{ fontWeight: '600' }}>
+                          {isTimerRecording ? formatTime(Math.round(totalRecordingTime / 1000)) : formatTime(estimatedTotalTime)}
+                        </span>
+                        <span style={{ fontSize: '11px', opacity: 0.6 }}>
+                          {isTimerRecording ? 'recording' : 'est.'}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Presenter Page Indicator - Only show for attendees */}
                     {!isPresenter && totalPages > 0 && (
                       <div style={{
@@ -921,6 +1021,64 @@ export default function JoinRoomPage() {
                       </div>
                     )}
 
+                    {/* Reset Timer Button - Only for presenters */}
+                    {isPresenter && totalPages > 0 && (
+                      <button
+                        onClick={resetTimer}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'rgba(255, 193, 7, 0.1)',
+                          color: 'rgba(255, 193, 7, 0.9)',
+                          border: '1px solid rgba(255, 193, 7, 0.3)',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 193, 7, 0.15)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 193, 7, 0.1)';
+                        }}
+                      >
+                        🔄 Reset Timer
+                      </button>
+                    )}
+
+                    {/* Fullscreen Button */}
+                    {showPdfViewer && totalPages > 0 && (
+                      <button
+                        onClick={toggleFullscreen}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'rgba(255,255,255,0.08)',
+                          color: 'rgba(255,255,255,0.9)',
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                        }}
+                      >
+                        {isFullscreen ? '🔲 Exit Fullscreen' : '⛶ Fullscreen'}
+                      </button>
+                    )}
+
                     <button
                       onClick={togglePdfViewer}
                       style={{
@@ -959,8 +1117,13 @@ export default function JoinRoomPage() {
                     background: 'rgba(255,255,255,0.02)',
                     borderRadius: '8px',
                     overflow: 'hidden',
-                    height: '600px',
-                    border: '1px solid rgba(255,255,255,0.08)'
+                    height: isFullscreen ? '100vh' : '600px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    position: isFullscreen ? 'fixed' : 'relative',
+                    top: isFullscreen ? '0' : 'auto',
+                    left: isFullscreen ? '0' : 'auto',
+                    width: isFullscreen ? '100vw' : 'auto',
+                    zIndex: isFullscreen ? 9999 : 'auto'
                   }}>
                     {/* PDF Toolbar */}
                     {totalPages > 0 && (
@@ -995,6 +1158,81 @@ export default function JoinRoomPage() {
                         />
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Enhanced Analytics Panel */}
+                {isPresenter && showPdfViewer && totalPages > 0 && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginTop: '16px',
+                    border: '1px solid rgba(255,255,255,0.08)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <h4 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: 'rgba(255,255,255,0.9)',
+                        margin: 0
+                      }}>
+                        📊 Presentation Analytics
+                      </h4>
+                      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
+                        Slide {currentPage} of {totalPages}
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                      <div style={{
+                        padding: '8px 12px',
+                        background: isTimerRecording 
+                          ? 'rgba(40, 167, 69, 0.1)'
+                          : 'rgba(147, 112, 219, 0.1)',
+                        borderRadius: '6px',
+                        border: isTimerRecording 
+                          ? '1px solid rgba(40, 167, 69, 0.2)'
+                          : '1px solid rgba(147, 112, 219, 0.2)'
+                      }}>
+                        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '2px' }}>
+                          {isTimerRecording ? 'Recording Time' : 'Est. Total Time'}
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>
+                          {isTimerRecording 
+                            ? formatTime(Math.round(totalRecordingTime / 1000))
+                            : formatTime(estimatedTotalTime)
+                          }
+                        </div>
+                      </div>
+                      
+                      <div style={{
+                        padding: '8px 12px',
+                        background: 'rgba(40, 167, 69, 0.1)',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(40, 167, 69, 0.2)'
+                      }}>
+                        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '2px' }}>Current Slide</div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>
+                          {slideTimings[currentPage - 1] ? formatTime(Math.round(slideTimings[currentPage - 1] / 1000)) : '0:00'}
+                        </div>
+                      </div>
+                      
+                      <div style={{
+                        padding: '8px 12px',
+                        background: 'rgba(255, 193, 7, 0.1)',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255, 193, 7, 0.2)'
+                      }}>
+                        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '2px' }}>Avg. per Slide</div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>
+                          {slideTimings.filter(t => t > 0).length > 0 
+                            ? formatTime(Math.round(slideTimings.reduce((sum, time) => sum + time, 0) / slideTimings.filter(t => t > 0).length / 1000))
+                            : '0:00'
+                          }
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1044,7 +1282,11 @@ export default function JoinRoomPage() {
 
             {/* Voice Recording Controls - Only for Presenters */}
             {isPresenter && (
-              <VoiceRecordingControls onTranscriptionUpdate={handleTranscriptionUpdate} />
+              <VoiceRecordingControls 
+                onTranscriptionUpdate={handleTranscriptionUpdate}
+                onRecordingStart={handleRecordingStart}
+                onRecordingStop={handleRecordingStop}
+              />
             )}
 
             {/* AI Insights Trigger - Only for Presenters */}

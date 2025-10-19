@@ -10,10 +10,14 @@ interface VoiceRecordingControlsProps {
     confidence: number;
     timestamp: number;
   }>) => void;
+  onRecordingStart?: () => void;
+  onRecordingStop?: () => void;
 }
 
 export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
-  onTranscriptionUpdate
+  onTranscriptionUpdate,
+  onRecordingStart,
+  onRecordingStop
 }) => {
   const [hasStartedTranscription, setHasStartedTranscription] = useState(false);
 
@@ -53,6 +57,8 @@ export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
     try {
       await startRecording();
       console.log('Recording started, transcription will start automatically when audio stream is ready...');
+      // Notify parent that recording has started
+      onRecordingStart?.();
     } catch (error) {
       console.error('Failed to start recording:', error);
     }
@@ -62,6 +68,8 @@ export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
     stopRecording();
     stopTranscription();
     setHasStartedTranscription(false); // Reset the flag
+    // Notify parent that recording has stopped
+    onRecordingStop?.();
   };
 
   const handlePauseResume = () => {
