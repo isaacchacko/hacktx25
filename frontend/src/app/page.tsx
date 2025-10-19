@@ -233,6 +233,39 @@ export default function Home() {
                 </button>
               </Link>
 
+              {user && (
+                <Link href="/dashboard">
+                  <button style={{
+                    padding: '16px 36px',
+                    background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderRadius: '28px',
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.4s',
+                    boxShadow: '0 8px 32px rgba(40, 167, 69, 0.5), inset 0 -2px 10px rgba(0,0,0,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px) scale(1.03)';
+                    e.currentTarget.style.boxShadow = '0 12px 40px rgba(40, 167, 69, 0.6), inset 0 -2px 10px rgba(0,0,0,0.2)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.boxShadow = '0 8px 32px rgba(40, 167, 69, 0.5), inset 0 -2px 10px rgba(0,0,0,0.2)';
+                  }}
+                  >
+                    <span style={{ fontSize: '24px' }}>🌟</span>
+                    Dashboard
+                  </button>
+                </Link>
+              )}
+
               <Link href="/start-presenting">
                 <button style={{
                   padding: '16px 36px',
