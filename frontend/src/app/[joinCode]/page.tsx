@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -10,6 +10,7 @@ import Navbar from "../../components/Navbar";
 import { VoiceRecordingControls } from "../../components/VoiceRecordingControls";
 import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
 import { generateMultipleSummaries, SummaryRequest } from "../../utils/geminiApi";
+import { generatePresentationSummaryPDF, downloadPDF, generateFilename } from "../../utils/pdfGenerator";
 
 // Dynamically import PDF components to prevent SSR issues
 const PDFViewer = dynamic(() => import("../../components/PDFViewer"), {
@@ -132,6 +133,9 @@ export default function JoinRoomPage() {
 
   // Summary generation state
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  
+  // PDF viewer ref for capturing slide images
+  const pdfViewerRef = useRef<HTMLDivElement>(null);
 
   // Debug logging for presenter current page changes
   useEffect(() => {
@@ -366,12 +370,23 @@ export default function JoinRoomPage() {
     }
   };
 
-  // Generate summary for all slides
+  // Generate summary for all slides with enhanced context
   const generateSummary = async () => {
     setIsGeneratingSummary(true);
 
     try {
-      console.log('📝 Generating summary for all slides...');
+      console.log('📝 Generating enhanced summary for all slides with slide context...');
+
+      // Get context data from localStorage and room state
+      const overallSummary = localStorage.getItem('presentation-summary') || '';
+      const pageTexts = JSON.parse(localStorage.getItem('presentation-page-texts') || '[]');
+      
+      console.log('📄 Context data loaded:', {
+        overallSummary: overallSummary ? 'Available' : 'Not available',
+        pageTextsCount: pageTexts.length,
+        totalPages: totalPages,
+        isPresenter: isPresenter
+      });
 
       // Get all pages that have transcriptions
       const pagesWithTranscriptions = Object.keys(transcriptionsByPage)
@@ -387,11 +402,15 @@ export default function JoinRoomPage() {
         return;
       }
 
-      // Prepare requests for Gemini API
+      // Prepare enhanced requests for Gemini API
       const summaryRequests: SummaryRequest[] = [];
 
       for (const pageNumber of pagesWithTranscriptions) {
         const pageData = transcriptionsByPage[pageNumber];
+        
+        // Get slide text - pageTexts is 0-indexed, pageNumber is 1-indexed
+        const slideText = pageTexts[pageNumber - 1] || '';
+        
         if (pageData && pageData.transcriptions.length > 0) {
           // Combine all transcriptions for this page
           const combinedText = pageData.transcriptions
@@ -401,38 +420,80 @@ export default function JoinRoomPage() {
 
           summaryRequests.push({
             pageNumber,
-            transcriptionText: combinedText
+            transcriptionText: combinedText,
+            slideText: slideText,
+            overallSummary: overallSummary,
+            totalPages: totalPages,
+            currentPage: currentPage,
+            isPresenter: isPresenter
           });
         } else {
           summaryRequests.push({
             pageNumber,
-            transcriptionText: ''
+            transcriptionText: '',
+            slideText: slideText,
+            overallSummary: overallSummary,
+            totalPages: totalPages,
+            currentPage: currentPage,
+            isPresenter: isPresenter
           });
         }
       }
 
-      // Generate summaries using Gemini API
-      console.log('🤖 Calling Gemini API for intelligent summarization...');
+      // Generate summaries using enhanced Gemini API
+      console.log('🤖 Calling enhanced Gemini API for intelligent summarization with slide context...');
       const summaries = await generateMultipleSummaries(summaryRequests);
 
-      // Output to console
-      console.log('📝 SUMMARY GENERATED:');
-      console.log('==================');
-      summaries
-        .sort((a, b) => a.pageNumber - b.pageNumber)
-        .forEach(({ pageNumber, summary, success, error }) => {
-          if (success) {
-            console.log(`Slide ${pageNumber}: ${summary}`);
-          } else {
-            console.log(`Slide ${pageNumber}: Error - ${error}`);
-          }
-        });
-      console.log('==================');
+      // Sort summaries by page number
+      const sortedSummaries = summaries.sort((a, b) => a.pageNumber - b.pageNumber);
+      
+      console.log('📝 ENHANCED SUMMARY GENERATED:');
+      console.log('==============================');
+      sortedSummaries.forEach(({ pageNumber, summary, success, error }) => {
+        if (success) {
+          console.log(`Slide ${pageNumber}: ${summary}`);
+        } else {
+          console.log(`Slide ${pageNumber}: Error - ${error}`);
+        }
+      });
+      console.log('==============================');
 
-      // TODO: In the future, this will also download as a file
+      // Generate PDF document with slide images and summaries
+      console.log('📄 Generating PDF document with slide images and summaries...');
+      
+      try {
+        const pdfBlob = await generatePresentationSummaryPDF(
+          sortedSummaries,
+          pdfViewerRef.current,
+          pageTexts,
+          totalPages,
+          currentPage,
+          pdfUrl,
+          {
+            title: 'Presentation Summary',
+            author: 'Presentation Platform',
+            subject: 'AI-Generated Slide Summaries',
+            roomCode: joinCode,
+            generatedAt: new Date()
+          }
+        );
+
+        // Download the PDF
+        const filename = generateFilename(joinCode);
+        downloadPDF(pdfBlob, filename);
+        
+        console.log('✅ PDF document generated and downloaded successfully!');
+        console.log(`📁 Filename: ${filename}`);
+        
+      } catch (pdfError) {
+        console.error('❌ Error generating PDF:', pdfError);
+        
+        // Fallback: still show summaries in console if PDF generation fails
+        console.log('📝 Fallback: Summaries available in console above');
+      }
 
     } catch (error) {
-      console.error('❌ Error generating summary:', error);
+      console.error('❌ Error generating enhanced summary:', error);
     } finally {
       setIsGeneratingSummary(false);
     }
@@ -1022,7 +1083,10 @@ export default function JoinRoomPage() {
                     )}
 
                     {/* PDF Viewer */}
-                    <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, height: 'calc(100% - 120px)' }}>
+                    <div 
+                      ref={pdfViewerRef}
+                      style={{ flex: 1, overflow: 'hidden', minHeight: 0, height: 'calc(100% - 120px)' }}
+                    >
                       <PDFViewer
                         pdfUrl={pdfUrl}
                         currentPage={currentPage}
@@ -1163,7 +1227,7 @@ export default function JoinRoomPage() {
                   lineHeight: '1.5'
                 }}>
                   Generate intelligent summaries for each slide based on the transcriptions.
-                  Summaries will be output to the console and can be downloaded as a file.
+                  A PDF document with slide images and summaries will be automatically downloaded.
                 </p>
 
                 <button
@@ -1214,7 +1278,7 @@ export default function JoinRoomPage() {
                     </>
                   ) : (
                     <>
-                      📥 Download Summary
+                      📄 Generate PDF Summary
                     </>
                   )}
                 </button>

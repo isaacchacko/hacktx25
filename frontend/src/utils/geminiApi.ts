@@ -6,6 +6,12 @@ const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '
 export interface SummaryRequest {
   pageNumber: number;
   transcriptionText: string;
+  // Enhanced context fields
+  slideText?: string;           // Text content from the actual slide
+  overallSummary?: string;      // Overall PDF summary for context
+  totalPages?: number;          // Total number of slides
+  currentPage?: number;         // Current slide being viewed
+  isPresenter?: boolean;        // Whether user is presenter
 }
 
 export interface SummaryResponse {
@@ -16,11 +22,18 @@ export interface SummaryResponse {
 }
 
 /**
- * Generate a summary for a single slide using Gemini API
+ * Generate a summary for a single slide using Gemini API with enhanced context
  */
 export async function generateSlideSummary(
   pageNumber: number, 
-  transcriptionText: string
+  transcriptionText: string,
+  context?: {
+    slideText?: string;
+    overallSummary?: string;
+    totalPages?: number;
+    currentPage?: number;
+    isPresenter?: boolean;
+  }
 ): Promise<SummaryResponse> {
   try {
     if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
@@ -56,14 +69,38 @@ export async function generateSlideSummary(
       throw new Error('No available Gemini models found');
     }
 
+    // Build context-aware prompt
+    let contextInfo = '';
+    if (context) {
+      contextInfo = `
+CONTEXT:
+- Overall Presentation Summary: "${context.overallSummary || 'Not available'}"
+- Total Slides: ${context.totalPages || 'Unknown'}
+- Current Slide: ${context.currentPage || pageNumber} of ${context.totalPages || 'Unknown'}
+- User Role: ${context.isPresenter ? 'Presenter' : 'Attendee'}
+
+SLIDE CONTENT:
+"${context.slideText || 'No slide content available'}"`;
+    }
+
     const prompt = `Please create a concise, professional summary of the following presentation slide transcription. 
-    Remove filler words, unnecessary repetitions, and make it more concise while preserving the key information.
-    If the transcription is empty or contains only filler words, respond with "Blank".
-    
-    Slide ${pageNumber} Transcription:
-    "${transcriptionText}"
-    
-    Summary:`;
+Use the provided slide content and overall presentation context to create a more accurate and relevant summary.
+Remove filler words, unnecessary repetitions, and make it more concise while preserving the key information.
+If the transcription is empty or contains only filler words, respond with "Blank".
+
+${contextInfo}
+
+TRANSCRIPTION FOR SLIDE ${pageNumber}:
+"${transcriptionText}"
+
+INSTRUCTIONS:
+- Use the slide content to better understand what was being discussed
+- Reference specific slide elements when relevant
+- Consider the overall presentation context for better accuracy
+- Make it more concise while preserving key information
+- If the transcription is empty or contains only filler words, respond with "Blank"
+
+Summary:`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -92,7 +129,7 @@ export async function generateSlideSummary(
 }
 
 /**
- * Generate summaries for multiple slides
+ * Generate summaries for multiple slides with enhanced context
  */
 export async function generateMultipleSummaries(
   requests: SummaryRequest[]
@@ -101,7 +138,15 @@ export async function generateMultipleSummaries(
   
   // Process slides sequentially to avoid rate limiting
   for (const request of requests) {
-    const result = await generateSlideSummary(request.pageNumber, request.transcriptionText);
+    const context = {
+      slideText: request.slideText,
+      overallSummary: request.overallSummary,
+      totalPages: request.totalPages,
+      currentPage: request.currentPage,
+      isPresenter: request.isPresenter
+    };
+    
+    const result = await generateSlideSummary(request.pageNumber, request.transcriptionText, context);
     results.push(result);
     
     // Add a small delay between requests to be respectful to the API
