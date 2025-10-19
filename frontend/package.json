@@ -14,10 +14,13 @@
     "dotenv": "^17.2.3",
     "firebase": "^10.14.1",
     "firebaseui": "^6.1.0",
+    "framer-motion": "^12.23.24",
     "next": "15.5.6",
+    "ogl": "^1.0.11",
     "pdfjs-dist": "^5.4.296",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-icons": "^5.5.0",
     "react-pdf": "^10.2.0",
     "socket.io-client": "^4.7.5"
   },

@@ -20,16 +20,19 @@ export default function Navbar() {
 
   return (
     <nav style={{
-      padding: '20px 40px',
-      margin: '20px 40px',
+      padding: '16px 40px',
+      margin: '24px auto',
+      maxWidth: '650px',
+      width: 'calc(100% - 120px)',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
       backdropFilter: 'blur(20px)',
-      background: 'rgba(255,255,255,0.08)',
-      border: '1px solid rgba(255,255,255,0.15)',
-      borderRadius: '20px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+      background: 'rgba(255, 255, 255, 0.05)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: '9999px',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255,255,255,0.1)',
+      pointerEvents: 'auto'
     }}>
       <Link href="/" style={{ textDecoration: 'none' }}>
         <div style={{
@@ -47,12 +50,36 @@ export default function Navbar() {
         </div>
       </Link>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           {user ? (
             <>
+              <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+                <span style={{
+                  color: 'rgba(255,255,255,0.9)',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+                }}
+                >
+                  Dashboard
+                </span>
+              </Link>
+              <span style={{
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: '14px',
+                userSelect: 'none'
+              }}>
+                |
+              </span>
               <span style={{
                 color: 'rgba(255,255,255,0.8)',
                 fontSize: '14px',
