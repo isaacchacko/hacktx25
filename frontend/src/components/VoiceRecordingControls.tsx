@@ -76,8 +76,8 @@ export const VoiceRecordingControls: React.FC<VoiceRecordingControlsProps> = ({
     if (isPaused) {
       resumeRecording();
       // Resume transcription if it was paused
-      if (!isTranscribing) {
-        startTranscription();
+      if (!isTranscribing && audioStream) {
+        startTranscription(audioStream);
       }
     } else {
       pauseRecording();

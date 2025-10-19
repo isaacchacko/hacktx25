@@ -409,7 +409,7 @@ Return 3 question suggestions as a JSON array:`;
     let suggestions: string[] = [];
     
     // Preprocess: remove markdown code fences
-    let cleanedText = text
+    const cleanedText = text
       .replace(/^```json\s*/gm, '')  // Remove opening ```json
       .replace(/^```\s*$/gm, '')     // Remove closing ```
       .replace(/```json\s*/g, '')    // Remove inline ```json
@@ -559,7 +559,7 @@ Example response:
     
     try {
       // Clean up the response
-      let cleanedText = text
+      const cleanedText = text
         .replace(/^```json\s*/gm, '')  // Remove opening ```json
         .replace(/^```\s*$/gm, '')     // Remove closing ```
         .replace(/```json\s*/g, '')    // Remove inline ```json

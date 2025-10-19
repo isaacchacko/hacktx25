@@ -1601,7 +1601,7 @@ export default function JoinRoomPage() {
             )}
 
             {/* Debug info - remove this later */}
-            {process.env.NODE_ENV === 'development' && (
+              {process.env.NODE_ENV === 'development' && (
               <div style={{
                 background: 'rgba(0,0,0,0.3)',
                 padding: '10px',
@@ -1610,7 +1610,7 @@ export default function JoinRoomPage() {
                 fontSize: '12px',
                 color: 'white'
               }}>
-                Debug: liveTranscription="{liveTranscription}", historyLength={transcriptionHistory.length}, presenterCurrentPage={presenterCurrentPage}
+                Debug: liveTranscription=&quot;{liveTranscription}&quot;, historyLength={transcriptionHistory.length}, presenterCurrentPage={presenterCurrentPage}
               </div>
             )}
 

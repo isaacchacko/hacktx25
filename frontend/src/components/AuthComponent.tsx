@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../app/context/AuthContext';
 
 const AuthComponent: React.FC = () => {
-  const { user, signIn, signUp, signInWithGoogle, logout, loading, isFirebaseConfigured } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle, signOut, loading, isFirebaseConfigured } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -61,12 +62,12 @@ const AuthComponent: React.FC = () => {
             <p className="text-sm text-gray-500 mb-4">
               For now, you can use the PDF viewer without authentication.
             </p>
-            <a 
+            <Link 
               href="/pdf-demo" 
               className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors inline-block"
             >
               Go to PDF Viewer
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -83,7 +84,7 @@ const AuthComponent: React.FC = () => {
             <p className="font-semibold">{user.email}</p>
           </div>
           <button
-            onClick={logout}
+            onClick={signOut}
             className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors"
           >
             Sign Out

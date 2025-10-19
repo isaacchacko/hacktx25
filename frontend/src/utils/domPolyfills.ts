@@ -82,3 +82,6 @@ if (typeof window !== 'undefined') {
     };
   }
 }
+
+// Ensure this file is treated as a module for dynamic import consumers
+export {};

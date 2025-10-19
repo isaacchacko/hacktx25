@@ -24,13 +24,15 @@ interface PresentationViewerProps {
   className?: string;
   onPageChange?: (page: number) => void;
   onTotalPagesChange?: (totalPages: number) => void;
+  onTimeUpdate?: (timings: number[], estimatedTotal: number) => void;
 }
 
 const PresentationViewer: React.FC<PresentationViewerProps> = ({
   pdfUrl,
   className = '',
   onPageChange,
-  onTotalPagesChange
+  onTotalPagesChange,
+  onTimeUpdate
 }) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);

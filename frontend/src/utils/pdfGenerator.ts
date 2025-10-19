@@ -216,9 +216,10 @@ async function renderAllSlidesIndependently(
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
-        };
+          canvas: canvas as any,
+        } as any;
         
-        await page.render(renderContext).promise;
+        await (page.render as any)(renderContext).promise;
         
         // Extract the image data
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);

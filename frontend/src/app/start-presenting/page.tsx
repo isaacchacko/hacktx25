@@ -272,7 +272,7 @@ return (
                 >
                   Sign In Required
                 </button>
-                <a
+                <Link
                   href="/login"
                   style={{
                     width: '100%',
@@ -300,7 +300,7 @@ return (
                   }}
                 >
                   ✨ Go to Sign In
-                </a>
+                </Link>
               </div>
             ) : (
               <button

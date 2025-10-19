@@ -299,7 +299,7 @@ export default function PresenterDashboard() {
                 }}>
                   <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌌</div>
                   <h3 style={{ color: 'white', marginBottom: '8px' }}>No presentations yet</h3>
-                  <p>Upload your first presentation using the "Launch Presentation" card above to get started!</p>
+                  <p>Upload your first presentation using the &quot;Launch Presentation&quot; card above to get started!</p>
                 </div>
               )}
 
