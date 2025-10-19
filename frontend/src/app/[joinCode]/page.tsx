@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -87,6 +87,14 @@ export default function JoinRoomPage() {
   const [totalPages, setTotalPages] = useState<number>(0);
   const [fitMode, setFitMode] = useState<'width' | 'height' | 'page' | 'auto'>('auto');
   const [showPdfViewer, setShowPdfViewer] = useState<boolean>(false);
+  
+  // PDF page tracking for presenter
+  const [presenterCurrentPage, setPresenterCurrentPage] = useState<number>(1);
+  
+  // Debug logging for presenter current page changes
+  useEffect(() => {
+    console.log('📄 Presenter current page updated to:', presenterCurrentPage);
+  }, [presenterCurrentPage]);
 
   // Load PDF URL from localStorage on component mount
   useEffect(() => {
@@ -142,6 +150,12 @@ export default function JoinRoomPage() {
         // Store original Firebase URL in localStorage for persistence
         localStorage.setItem('presentation-pdf-url', data.pdfUrl);
       }
+      
+      // Set initial presenter current page if available
+      if (data.currentPage) {
+        console.log("📄 Setting initial presenter page:", data.currentPage);
+        setPresenterCurrentPage(data.currentPage);
+      }
     };
 
     const handleError = (errorMessage: string) => {
@@ -188,6 +202,14 @@ export default function JoinRoomPage() {
       }
     };
 
+    const handlePdfPageUpdate = (data: any) => {
+      console.log("📄 PDF page update received:", data);
+      if (data.joinCode === joinCode) {
+        console.log("📄 Updating presenter current page to:", data.currentPage);
+        setPresenterCurrentPage(data.currentPage);
+      }
+    };
+
     // Add event listeners
     socket.on("joined-room", handleJoinedRoom);
     socket.on("error", handleError);
@@ -196,6 +218,7 @@ export default function JoinRoomPage() {
     socket.on("questions-list", handleQuestionsList);
     socket.on("transcription-update", handleTranscriptionUpdate);
     socket.on("room-pdf-update", handleRoomPdfUpdate);
+    socket.on("pdf-page-updated", handlePdfPageUpdate);
 
     // Cleanup
     return () => {
@@ -206,6 +229,7 @@ export default function JoinRoomPage() {
       socket.off("questions-list", handleQuestionsList);
       socket.off("transcription-update", handleTranscriptionUpdate);
       socket.off("room-pdf-update", handleRoomPdfUpdate);
+      socket.off("pdf-page-updated", handlePdfPageUpdate);
     };
   }, [socket]);
 
@@ -280,25 +304,34 @@ export default function JoinRoomPage() {
   };
 
   // PDF-related handlers
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     console.log('📄 Page changed to:', page);
     setCurrentPage(page);
-  };
+    
+    // If user is presenter, emit page change to socket server
+    if (isPresenter && socket) {
+      console.log('📄 Presenter changing page to:', page, 'emitting to socket server');
+      socket.emit('pdf-page-change', {
+        page: page,
+        joinCode: joinCode
+      });
+    }
+  }, [isPresenter, socket, joinCode]);
 
-  const handleTotalPagesChange = (pages: number) => {
+  const handleTotalPagesChange = useCallback((pages: number) => {
     console.log('📄 Total pages:', pages);
     setTotalPages(pages);
-  };
+  }, []);
 
-  const handleFitModeChange = (mode: 'width' | 'height' | 'page' | 'auto') => {
+  const handleFitModeChange = useCallback((mode: 'width' | 'height' | 'page' | 'auto') => {
     console.log('📄 Fit mode changed to:', mode);
     setFitMode(mode);
-  };
+  }, []);
 
-  const togglePdfViewer = () => {
+  const togglePdfViewer = useCallback(() => {
     console.log('📄 Toggling PDF viewer, current state:', showPdfViewer);
     setShowPdfViewer(!showPdfViewer);
-  };
+  }, [showPdfViewer]);
 
   // Remove authentication requirement - allow anonymous users
 
@@ -615,7 +648,7 @@ export default function JoinRoomPage() {
                 fontSize: '12px',
                 color: 'white'
               }}>
-                Debug: liveTranscription="{liveTranscription}", historyLength={transcriptionHistory.length}
+                Debug: liveTranscription="{liveTranscription}", historyLength={transcriptionHistory.length}, presenterCurrentPage={presenterCurrentPage}
               </div>
             )}
 

@@ -352,7 +352,8 @@ io.on("connection", (socket) => {
       questions: [],
       presenterId: socket.userId,
       presenterEmail: socket.userEmail,
-      pdfUrl: pdfUrl // Store PDF URL in room data
+      pdfUrl: pdfUrl, // Store PDF URL in room data
+      currentPage: 1 // Track current PDF page
     });
 
     // Join the room
@@ -382,7 +383,8 @@ io.on("connection", (socket) => {
       memberCount: room.members.size,
       message: `Successfully joined room ${joinCode}`,
       isPresenter: true,
-      pdfUrl: pdfUrl
+      pdfUrl: pdfUrl,
+      currentPage: room.currentPage || 1
     };
     console.log('Sending joined-room event with isPresenter and PDF URL:', joinedRoomData);
     socket.emit("joined-room", joinedRoomData);
@@ -430,7 +432,8 @@ io.on("connection", (socket) => {
       memberCount: room.members.size,
       message: `Successfully joined room ${joinCode}`,
       isPresenter: room.presenterId === socket.userId,
-      pdfUrl: room.pdfUrl || null // Include PDF URL if room has one
+      pdfUrl: room.pdfUrl || null, // Include PDF URL if room has one
+      currentPage: room.currentPage || 1 // Include current PDF page
     };
     console.log(`Room ${joinCode} presenterId:`, room.presenterId);
     console.log(`User ${socket.userId} isPresenter:`, joinedRoomData.isPresenter);
@@ -576,6 +579,39 @@ io.on("connection", (socket) => {
 
     // Broadcast updated question to all members in the room
     io.to(joinCode).emit("question-updated", question);
+  });
+
+  // Handle PDF page changes (presenter only)
+  socket.on("pdf-page-change", (data) => {
+    const { page, joinCode } = data;
+    if (!page || !joinCode) {
+      socket.emit("error", "Page number and join code are required");
+      return;
+    }
+
+    if (!rooms.has(joinCode)) {
+      socket.emit("error", "Room not found");
+      return;
+    }
+
+    const room = rooms.get(joinCode);
+    
+    // Check if user is the presenter
+    if (room.presenterId !== socket.userId) {
+      socket.emit("error", "Only the presenter can change PDF pages");
+      return;
+    }
+
+    // Update the current page in the room
+    room.currentPage = page;
+    console.log(`📄 Presenter ${socket.userId} changed PDF page to ${page} in room ${joinCode}`);
+
+    // Broadcast page change to all members in the room
+    io.to(joinCode).emit("pdf-page-updated", {
+      joinCode,
+      currentPage: page,
+      updatedBy: socket.userId
+    });
   });
 
   // Handle disconnection
