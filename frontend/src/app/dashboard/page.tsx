@@ -1,28 +1,109 @@
 "use client";
 
-import { useState, ChangeEvent } from 'react';
+import { useState, ChangeEvent, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../../components/Navbar";
+import { db } from "../lib/firebase";
+import { useSocket } from "../../hooks/useSocket";
 
 interface Presentation {
-  id: number;
-  name: string;
-  code: string;
-  date: string;
+  id: string;
+  fileName: string;
+  pdfUrl: string;
+  pdfType: 'uploaded' | 'external';
+  fileSize: number;
+  createdAt: string;
+  userEmail: string;
 }
 
 export default function PresenterDashboard() {
+  const router = useRouter();
   const { user, loading } = useAuth();
+  const { socket, isConnected } = useSocket();
   const [file, setFile] = useState<File | null>(null);
-  const [presentations] = useState<Presentation[]>([
-    { id: 1, name: 'Q1 Sales Report.pdf', code: 'STAR01', date: '2025-10-15' },
-    { id: 2, name: 'Product Launch.pptx', code: 'MOON42', date: '2025-10-10' }
-  ]);
+  const [presentations, setPresentations] = useState<Presentation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+    }
+  };
+
+  // Fetch user presentations from Firestore
+  useEffect(() => {
+    const fetchPresentations = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        
+        const snapshot = await db.collection('presentations')
+          .where('userId', '==', user.uid)
+          .orderBy('createdAt', 'desc')
+          .get();
+        
+        const fetchedPresentations = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Presentation[];
+        
+        // Dedupe by pdfUrl
+        const uniquePresentations = fetchedPresentations.filter((presentation, index, self) => 
+          index === self.findIndex(p => p.pdfUrl === presentation.pdfUrl)
+        );
+        
+        setPresentations(uniquePresentations);
+      } catch (error) {
+        console.error('Error fetching presentations:', error);
+        setLoadError('Failed to load presentations');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPresentations();
+  }, [user]);
+
+  const handleViewPresentation = (presentation: Presentation) => {
+    const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(presentation.pdfUrl)}`;
+    window.open(proxyUrl, '_blank');
+  };
+
+  const handleLaunchPresentation = async (presentation: Presentation) => {
+    if (!socket || !isConnected || !user) {
+      console.error('Socket not connected or user not authenticated');
+      return;
+    }
+
+    try {
+      // Clear any previous PDF URL from localStorage to prevent showing old PDF
+      localStorage.removeItem('presentation-pdf-url');
+      
+      // Emit create-room-with-pdf event
+      socket.emit('create-room-with-pdf', {
+        pdfUrl: presentation.pdfUrl,
+        fileName: presentation.fileName
+      });
+
+      // Listen for room creation response
+      socket.once('room-created', (data: { joinCode: string }) => {
+        router.push(`/${data.joinCode}`);
+      });
+
+      // Handle errors
+      socket.once('error', (error: string) => {
+        console.error('Error creating room:', error);
+      });
+    } catch (error) {
+      console.error('Error launching presentation:', error);
     }
   };
 
@@ -169,7 +250,61 @@ export default function PresenterDashboard() {
               gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
               gap: '25px'
             }}>
-              {presentations.map((pres) => (
+              {/* Loading State */}
+              {isLoading && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: 'rgba(255,255,255,0.7)'
+                }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    border: '4px solid rgba(147, 112, 219, 0.3)',
+                    borderTopColor: '#9370db',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                    margin: '0 auto 16px'
+                  }} />
+                  <p>Loading your stellar archives...</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {loadError && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  background: 'rgba(220, 53, 69, 0.2)',
+                  border: '1px solid rgba(220, 53, 69, 0.4)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  textAlign: 'center',
+                  color: '#ff6b6b'
+                }}>
+                  <p>{loadError}</p>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!isLoading && !loadError && presentations.length === 0 && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '12px',
+                  padding: '40px',
+                  textAlign: 'center',
+                  color: 'rgba(255,255,255,0.7)'
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌌</div>
+                  <h3 style={{ color: 'white', marginBottom: '8px' }}>No presentations yet</h3>
+                  <p>Upload your first presentation using the "Launch Presentation" card above to get started!</p>
+                </div>
+              )}
+
+              {/* Presentations List */}
+              {!isLoading && !loadError && presentations.map((pres) => (
                 <div key={pres.id} style={{
                   background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
                   border: '1px solid rgba(255,255,255,0.2)',
@@ -199,7 +334,7 @@ export default function PresenterDashboard() {
                     whiteSpace: 'nowrap',
                     textShadow: '0 2px 10px rgba(0,0,0,0.5)'
                   }}>
-                    {pres.name}
+                    {pres.fileName}
                   </h3>
                   <div style={{
                     display: 'flex',
@@ -209,42 +344,81 @@ export default function PresenterDashboard() {
                     color: 'rgba(255,255,255,0.7)'
                   }}>
                     <span>
-                      Code: <strong style={{
+                      Size: <strong style={{
                         color: '#9370db',
-                        fontFamily: 'monospace',
-                        fontSize: '16px',
-                        textShadow: '0 0 10px rgba(147, 112, 219, 0.8)'
+                        fontSize: '14px'
                       }}>
-                        {pres.code}
+                        {pres.fileSize > 0 ? `${(pres.fileSize / 1024 / 1024).toFixed(1)} MB` : 'Unknown'}
                       </strong>
                     </span>
-                    <span>{pres.date}</span>
+                    <span>{new Date(pres.createdAt).toLocaleDateString()}</span>
                   </div>
-                  <button style={{
-                    width: '100%',
-                    padding: '14px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontSize: '15px',
-                    fontWeight: '700',
-                    transition: 'all 0.3s',
-                    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                  }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
-                    }}
-                  >
-                    🚀 Launch Presentation
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      onClick={() => handleViewPresentation(pres)}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        background: 'linear-gradient(135deg, #4ade80 0%, #34d399 100%)',
+                        color: 'white',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        transition: 'all 0.3s',
+                        boxShadow: '0 4px 15px rgba(74, 222, 128, 0.4)',
+                        textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(74, 222, 128, 0.6)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(74, 222, 128, 0.4)';
+                      }}
+                    >
+                      👁️ View
+                    </button>
+                    <button 
+                      onClick={() => handleLaunchPresentation(pres)}
+                      disabled={!isConnected || !user}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        background: isConnected && user 
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : 'rgba(255,255,255,0.1)',
+                        color: 'white',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        borderRadius: '8px',
+                        cursor: (isConnected && user) ? 'pointer' : 'not-allowed',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        transition: 'all 0.3s',
+                        boxShadow: isConnected && user 
+                          ? '0 4px 15px rgba(102, 126, 234, 0.4)'
+                          : 'none',
+                        textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                        opacity: (isConnected && user) ? 1 : 0.5
+                      }}
+                      onMouseOver={(e) => {
+                        if (isConnected && user) {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (isConnected && user) {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                        }
+                      }}
+                    >
+                      🚀 Launch
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
