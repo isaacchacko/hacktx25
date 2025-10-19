@@ -96,7 +96,11 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       streamRef.current = stream;
       setAudioStream(stream);
       setHasPermission(true);
-
+      // Check if MediaRecorder is supported
+      if (!window.MediaRecorder) {
+        setError('Audio recording is not supported in this browser');
+        return;
+      }
       // Create MediaRecorder
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
