@@ -75,6 +75,55 @@ export default function Home() {
         opacity: 0.6
       }} />
 
+    {/* Shooting Stars */}
+    {[
+      { top: '10%', left: '-200px' },
+      { top: '30%', left: '-200px' },
+      { top: '60%', left: '-200px' },
+      { top: '80%', left: '-200px' },
+      { top: '-50px', left: '40%' },
+      { top: '-50px', left: '50%' },
+      { top: '-50px', left: '60%' },
+      { top: '-50px', left: '30%' },
+      { top: '-50px', left: '70%' }
+    ].map((pos, i) => (
+      <div
+        key={i}
+        style={{
+          position: 'absolute',
+          top: pos.top,
+          left: pos.left,
+          width: '150px',
+          height: '2px',
+          transform: 'rotate(-45deg)',
+          transformOrigin: 'center',
+          animation: `shootingStar ${4 + i * 1.5}s linear infinite`,
+          animationDelay: `${i * 2}s`,
+          pointerEvents: 'none',
+          display: 'flex',
+          alignItems: 'center'
+        }}
+      >
+        {/* Star head (circle) */}
+        <div style={{
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          background: 'white',
+          boxShadow: '0 0 15px 3px rgba(255,255,255,0.8)',
+          position: 'absolute',
+          right: '0'
+        }} />
+        {/* Star tail (gradient line) */}
+        <div style={{
+          width: '100%',
+          height: '2px',
+          background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 100%)',
+          boxShadow: '0 0 10px 2px rgba(255,255,255,0.5)'
+        }} />
+      </div>
+    ))}
+
       {/* Content Container */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Navbar />
@@ -310,6 +359,35 @@ export default function Home() {
         @keyframes twinkle {
           0% { opacity: 0.3; }
           100% { opacity: 0.8; }
+        }
+        
+        @keyframes shootingStar {
+          0% {
+            transform: translate(0, 0) rotate(-315deg);
+            opacity: 1;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            transform: translate(1400px, 1400px) rotate(-315deg);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0) translateX(0);
+          }
+          25% {
+            transform: translateY(-20px) translateX(10px);
+          }
+          50% {
+            transform: translateY(-10px) translateX(-10px);
+          }
+          75% {
+            transform: translateY(-15px) translateX(5px);
+          }
         }
       `}</style>
     </div>
