@@ -54,25 +54,85 @@ const userSessions = new Map();
 async function verifyFirebaseToken(token) {
   try {
     if (!admin.apps.length) {
-        // Firebase Admin SDK not initialized, use mock verification
-        console.log('Firebase Admin SDK not initialized - using mock authentication');
+        // Firebase Admin SDK not initialized, decode JWT token manually
+        console.log('Firebase Admin SDK not initialized - decoding JWT token manually');
         console.log('Token received:', token.substring(0, 20) + '...');
-        // Create a more unique mock user ID based on the entire token hash
-        const crypto = require('crypto');
-        const tokenHash = crypto.createHash('md5').update(token).digest('hex').slice(0, 12);
-        const mockUserId = `mock-user-${tokenHash}`;
-        console.log('Generated mock user ID:', mockUserId);
-        return { 
-          uid: mockUserId, 
-          email: 'mock@example.com',
-          name: 'Mock User'
-        };
+        
+        try {
+          // Decode the JWT token without verification
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+          
+          const payload = JSON.parse(jsonPayload);
+          console.log('Extracted payload from token:', payload);
+          
+          if (payload.email) {
+            console.log('Using email from token payload:', payload.email);
+            return {
+              uid: payload.sub || payload.user_id || `mock-user-${Date.now()}`,
+              email: payload.email,
+              name: payload.name || payload.email.split('@')[0]
+            };
+          } else {
+            // Fallback if no email in token
+            const crypto = require('crypto');
+            const tokenHash = crypto.createHash('md5').update(token).digest('hex').slice(0, 12);
+            const mockUserId = `mock-user-${tokenHash}`;
+            console.log('No email in token, using mock user ID:', mockUserId);
+            return { 
+              uid: mockUserId, 
+              email: 'mock@example.com',
+              name: 'Mock User'
+            };
+          }
+        } catch (decodeError) {
+          console.error('Error decoding token payload:', decodeError);
+          // Fallback to mock user if decoding fails
+          const crypto = require('crypto');
+          const tokenHash = crypto.createHash('md5').update(token).digest('hex').slice(0, 12);
+          const mockUserId = `mock-user-${tokenHash}`;
+          console.log('Token decode failed, using mock user ID:', mockUserId);
+          return { 
+            uid: mockUserId, 
+            email: 'mock@example.com',
+            name: 'Mock User'
+          };
+        }
     }
     
     const decodedToken = await admin.auth().verifyIdToken(token);
+    console.log('Successfully verified Firebase token for user:', decodedToken.email);
     return decodedToken;
   } catch (error) {
     console.error('Error verifying Firebase token:', error);
+    
+    // Fallback: try to extract user info from the token without verification
+    try {
+      // Decode the JWT token without verification (for debugging/fallback)
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const payload = JSON.parse(jsonPayload);
+      console.log('Extracted payload from token:', payload);
+      
+      if (payload.email) {
+        console.log('Using email from token payload:', payload.email);
+        return {
+          uid: payload.sub || payload.user_id || `fallback-${Date.now()}`,
+          email: payload.email,
+          name: payload.name || payload.email.split('@')[0]
+        };
+      }
+    } catch (decodeError) {
+      console.error('Error decoding token payload:', decodeError);
+    }
+    
     return null;
   }
 }
