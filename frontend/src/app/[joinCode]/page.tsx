@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -9,7 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import Navbar from "../../components/Navbar";
 import { VoiceRecordingControls } from "../../components/VoiceRecordingControls";
 import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
-import { generateMultipleSummaries, SummaryRequest } from "../../utils/geminiApi";
+import { generateMultipleSummaries, SummaryRequest, getQuestionSuggestions, QuestionSuggestionsContext } from "../../utils/geminiApi";
 
 // Dynamically import PDF components to prevent SSR issues
 const PDFViewer = dynamic(() => import("../../components/PDFViewer"), {
@@ -85,6 +85,17 @@ export default function JoinRoomPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Question suggestions state
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const latestRequestId = useRef<number>(0);
+
+  // PDF context state for suggestions
+  const [pdfSummary, setPdfSummary] = useState<string>('');
+  const [pdfPageTexts, setPdfPageTexts] = useState<string[]>([]);
 
   // Transcription state
   const [liveTranscription, setLiveTranscription] = useState("");
@@ -180,6 +191,17 @@ export default function JoinRoomPage() {
         setShowPdfViewer(true);
         // Store original Firebase URL in localStorage for persistence
         localStorage.setItem('presentation-pdf-url', data.pdfUrl);
+      }
+
+      // Store PDF context for suggestions
+      if (data.summary) {
+        console.log("📄 Received PDF summary:", data.summary);
+        setPdfSummary(data.summary);
+      }
+
+      if (data.pageTexts && Array.isArray(data.pageTexts)) {
+        console.log("📄 Received PDF page texts:", data.pageTexts.length, "pages");
+        setPdfPageTexts(data.pageTexts);
       }
 
       // Set initial presenter current page if available
@@ -315,6 +337,102 @@ export default function JoinRoomPage() {
     } catch (error) {
       console.error('Error signing out:', error);
     }
+  };
+
+  // Debounced question suggestions with PDF context (attendees only)
+  useEffect(() => {
+    // Skip suggestions for presenters
+    if (isPresenter) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    if (!newQuestion.trim() || newQuestion.trim().length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+        console.log('Gemini API key not available, skipping suggestions');
+        return;
+      }
+
+      // Generate unique request ID
+      const currentRequestId = ++latestRequestId.current;
+
+      setIsSuggesting(true);
+      setSuggestError(null);
+      setShowSuggestions(true); // Show panel immediately with loading state
+
+      try {
+        // Get recent questions for context
+        const recentQuestions = questions
+          .slice(-5)
+          .map(q => q.text)
+          .filter(text => text.length > 0);
+
+        // Determine active page for context
+        const activePage = isPresenter ? currentPage : presenterCurrentPage;
+        
+        // Build context with PDF information
+        const context: QuestionSuggestionsContext = {
+          recentQuestions,
+          overallSummary: pdfSummary || undefined,
+          currentPage: activePage,
+          totalPages: totalPages || undefined,
+          slideText: (pdfPageTexts.length > 0 && activePage > 0) 
+            ? pdfPageTexts[activePage - 1] 
+            : undefined
+        };
+
+        console.log('💭 Generating suggestions with context:', {
+          activePage,
+          totalPages,
+          hasSummary: !!pdfSummary,
+          hasSlideText: !!context.slideText,
+          recentQuestionsCount: recentQuestions.length
+        });
+
+        const result = await getQuestionSuggestions(newQuestion.trim(), context);
+
+        // Check if this is still the latest request
+        if (currentRequestId === latestRequestId.current) {
+          if (result.success) {
+            setSuggestions(result.suggestions);
+            setShowSuggestions(result.suggestions.length > 0);
+          } else {
+            setSuggestError(result.error || 'Failed to generate suggestions');
+            setSuggestions([]);
+            setShowSuggestions(false);
+          }
+        } else {
+          console.log('⏭️ Skipping stale suggestion response');
+        }
+      } catch (error) {
+        console.error('Error generating suggestions:', error);
+        // Only update state if this is still the latest request
+        if (currentRequestId === latestRequestId.current) {
+          setSuggestError('Failed to generate suggestions');
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } finally {
+        // Only update loading state if this is still the latest request
+        if (currentRequestId === latestRequestId.current) {
+          setIsSuggesting(false);
+        }
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [newQuestion, questions, pdfSummary, pdfPageTexts, currentPage, presenterCurrentPage, totalPages, isPresenter]);
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setNewQuestion(suggestion);
+    setShowSuggestions(false);
   };
 
   // Handle transcription updates from voice recording
@@ -956,9 +1074,12 @@ export default function JoinRoomPage() {
                                         ? 'rgba(40, 167, 69, 0.15)'
                                         : 'rgba(255,255,255,0.05)',
                                       color: userVote === "upvote" 
-                                        ? 'rgba(40, 167, 69, 0.9)' 
+                                        ? '#22c55e' 
                                         : 'rgba(255,255,255,0.7)',
-                                      opacity: (!isConnected || question.answered) ? 0.5 : 1
+                                      opacity: (!isConnected || question.answered) ? 0.5 : 1,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
                                     }}
                                     onMouseOver={(e) => {
                                       if (isConnected && !question.answered) {
@@ -975,7 +1096,8 @@ export default function JoinRoomPage() {
                                       }
                                     }}
                                   >
-                                    {question.upvotes}
+                                    <span style={{ fontSize: '16px', color: '#22c55e' }}>↑</span>
+                                    <span>{question.upvotes}</span>
                                   </button>
                                   <button
                                     onClick={() => handleVote(question.id, userVote === "downvote" ? "remove" : "downvote")}
@@ -992,9 +1114,12 @@ export default function JoinRoomPage() {
                                         ? 'rgba(220, 53, 69, 0.15)'
                                         : 'rgba(255,255,255,0.05)',
                                       color: userVote === "downvote" 
-                                        ? 'rgba(220, 53, 69, 0.9)' 
+                                        ? '#ef4444' 
                                         : 'rgba(255,255,255,0.7)',
-                                      opacity: (!isConnected || question.answered) ? 0.5 : 1
+                                      opacity: (!isConnected || question.answered) ? 0.5 : 1,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
                                     }}
                                     onMouseOver={(e) => {
                                       if (isConnected && !question.answered) {
@@ -1011,7 +1136,8 @@ export default function JoinRoomPage() {
                                       }
                                     }}
                                   >
-                                    {question.downvotes}
+                                    <span style={{ fontSize: '16px', color: '#ef4444' }}>↓</span>
+                                    <span>{question.downvotes}</span>
                                   </button>
                                 </div>
                               );
@@ -1079,38 +1205,122 @@ export default function JoinRoomPage() {
                   {isPresenter ? 'Presenter' : 'Participant'}
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <input
-                  type="text"
-                  value={newQuestion}
-                  onChange={(e) => setNewQuestion(e.target.value)}
-                  onKeyPress={handleQuestionKeyPress}
-                  placeholder={isPresenter
-                    ? "Ask a question..."
-                    : "Ask a question..."
-                  }
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.05)',
-                    color: 'white',
-                    fontSize: '15px',
-                    outline: 'none',
-                    opacity: isConnected ? 1 : 0.5,
-                    cursor: isConnected ? 'text' : 'not-allowed'
-                  }}
-                  onFocus={(e) => {
-                    if (isConnected) {
-                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
+              
+              {isPresenter ? (
+                <div style={{
+                  padding: '20px',
+                  background: 'rgba(147, 112, 219, 0.1)',
+                  border: '1px solid rgba(147, 112, 219, 0.2)',
+                  borderRadius: '8px',
+                  textAlign: 'center'
+                }}>
+                  <p style={{
+                    color: 'rgba(255,255,255,0.8)',
+                    margin: 0,
+                    fontSize: '14px'
+                  }}>
+                    🎤 As the presenter, you can answer questions and mark them as answered, but you cannot ask questions.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', gap: '16px', position: 'relative' }}>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input
+                    type="text"
+                    value={newQuestion}
+                    onChange={(e) => setNewQuestion(e.target.value)}
+                    onKeyPress={handleQuestionKeyPress}
+                    onFocus={() => {
+                      if (suggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // Delay hiding suggestions to allow clicking
+                      setTimeout(() => setShowSuggestions(false), 150);
+                    }}
+                    placeholder={isPresenter
+                      ? "Ask a question..."
+                      : "Ask a question..."
                     }
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.12)';
-                  }}
-                  disabled={!isConnected}
-                />
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: '8px',
+                      background: 'rgba(255,255,255,0.05)',
+                      color: 'white',
+                      fontSize: '15px',
+                      outline: 'none',
+                      opacity: isConnected ? 1 : 0.5,
+                      cursor: isConnected ? 'text' : 'not-allowed'
+                    }}
+                    disabled={!isConnected}
+                  />
+                  
+                  {/* Suggestions Panel */}
+                  {showSuggestions && (suggestions.length > 0 || isSuggesting) && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'rgba(0,0,0,0.9)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '8px',
+                      marginTop: '4px',
+                      zIndex: 1000,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+                    }}>
+                      {isSuggesting && (
+                        <div style={{
+                          padding: '12px 16px',
+                          color: 'rgba(255,255,255,0.7)',
+                          fontSize: '14px',
+                          textAlign: 'center',
+                          borderBottom: '1px solid rgba(255,255,255,0.1)'
+                        }}>
+                          <div style={{
+                            display: 'inline-block',
+                            width: '16px',
+                            height: '16px',
+                            border: '2px solid rgba(255,255,255,0.3)',
+                            borderTopColor: '#667eea',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            marginRight: '8px'
+                          }} />
+                          Generating suggestions...
+                        </div>
+                      )}
+                      
+                      {suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          style={{
+                            padding: '12px 16px',
+                            color: 'white',
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            borderBottom: index < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={postQuestion}
                   disabled={!isConnected || !newQuestion.trim()}
@@ -1140,13 +1350,15 @@ export default function JoinRoomPage() {
                   Ask
                 </button>
               </div>
-              <p style={{
-                fontSize: '13px',
-                margin: '16px 0 0 0',
-                color: 'rgba(255,255,255,0.6)'
-              }}>
-                Press Enter to ask, or click the Ask button. Questions will be visible to all members in the room.
-              </p>
+                  <p style={{
+                    fontSize: '13px',
+                    margin: '16px 0 0 0',
+                    color: 'rgba(255,255,255,0.6)'
+                  }}>
+                    Press Enter to ask, or click the Ask button. Questions will be visible to all members in the room.
+                  </p>
+                </div>
+              )}
             </div>
             {/* Testing Instructions */}
             <div style={{
