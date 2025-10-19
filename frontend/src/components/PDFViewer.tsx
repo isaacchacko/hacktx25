@@ -12,6 +12,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   className = '' 
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isRenderingRef = useRef<boolean>(false);
+  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [canvasReady, setCanvasReady] = useState<boolean>(false);
   const [pdfDocument, setPdfDocument] = useState<any>(null);
 
@@ -80,11 +82,19 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
         return;
       }
 
+      if (isRenderingRef.current) {
+        console.log('📄 Render already in progress, skipping duplicate render');
+        return;
+      }
+
       const canvas = canvasRef.current;
       if (!canvas) {
         console.log('Canvas not available yet, skipping render');
         return;
       }
+
+      isRenderingRef.current = true;
+      console.log('📄 Starting PDF render for page:', currentPage);
 
       try {
         const page = await pdfDocument.getPage(currentPage);
@@ -92,6 +102,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
         if (!context) {
           console.error('Could not get 2D context from canvas');
+          isRenderingRef.current = false;
           return;
         }
 
@@ -164,14 +175,41 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
         };
 
         await page.render(renderContext).promise;
+        console.log('📄 PDF render completed for page:', currentPage);
       } catch (err) {
-        console.error('Error rendering page:', err);
+        console.error('❌ Error rendering page:', err);
         setError('Failed to render PDF page');
+      } finally {
+        isRenderingRef.current = false;
       }
     };
 
-    renderPage();
+    // Debounce render calls to prevent multiple simultaneous renders
+    if (renderTimeoutRef.current) {
+      clearTimeout(renderTimeoutRef.current);
+    }
+
+    renderTimeoutRef.current = setTimeout(() => {
+      renderPage();
+    }, 100); // 100ms debounce
+
+    // Cleanup function
+    return () => {
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+      }
+    };
   }, [pdfDocument, canvasReady, currentPage, totalPages, fitMode]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+      }
+      isRenderingRef.current = false;
+    };
+  }, []);
 
   if (loading) {
     return (

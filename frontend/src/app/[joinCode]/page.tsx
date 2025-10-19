@@ -3,11 +3,50 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useSocket } from "../../hooks/useSocket";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../../components/Navbar";
 import { VoiceRecordingControls } from "../../components/VoiceRecordingControls";
 import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
+
+// Dynamically import PDF components to prevent SSR issues
+const PDFViewer = dynamic(() => import("../../components/PDFViewer"), {
+  ssr: false,
+  loading: () => (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '400px',
+      background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+      backdropFilter: 'blur(20px)',
+      borderRadius: '16px',
+      border: '1px solid rgba(255,255,255,0.2)'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(147, 112, 219, 0.3)',
+          borderTopColor: '#9370db',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 16px'
+        }} />
+        <p style={{ color: 'rgba(255,255,255,0.8)' }}>Loading PDF viewer...</p>
+      </div>
+    </div>
+  )
+});
+
+const PDFToolbar = dynamic(() => import("../../components/PDFToolbar"), {
+  ssr: false
+});
+
+const PDFNavigation = dynamic(() => import("../../components/PDFNavigation"), {
+  ssr: false
+});
 
 interface Question {
   id: string;
@@ -42,6 +81,31 @@ export default function JoinRoomPage() {
   }>>([]);
   const [isTranscriptionCollapsed, setIsTranscriptionCollapsed] = useState(false);
 
+  // PDF state
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [fitMode, setFitMode] = useState<'width' | 'height' | 'page' | 'auto'>('auto');
+  const [showPdfViewer, setShowPdfViewer] = useState<boolean>(false);
+
+  // Load PDF URL from localStorage on component mount
+  useEffect(() => {
+    console.log('🔍 Checking for PDF URL in localStorage...');
+    const storedPdfUrl = localStorage.getItem('presentation-pdf-url');
+    if (storedPdfUrl) {
+      console.log('📄 Found PDF URL in localStorage:', storedPdfUrl);
+      
+      // Convert Firebase URL to proxy URL to bypass CORS
+      const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(storedPdfUrl)}`;
+      console.log('🔄 Using proxy URL for PDF:', proxyUrl);
+      
+      setPdfUrl(proxyUrl);
+      setShowPdfViewer(true);
+    } else {
+      console.log('❌ No PDF URL found in localStorage');
+    }
+  }, []);
+
   useEffect(() => {
     if (socket && isConnected && currentRoom !== joinCode) {
       // Only join the room if we're not already in it
@@ -64,6 +128,20 @@ export default function JoinRoomPage() {
     const handleJoinedRoom = (data: any) => {
       console.log("Joined room:", data);
       setError(null);
+      
+      // Handle PDF URL if present in joined room data
+      if (data.pdfUrl) {
+        console.log("📄 Received PDF URL from joined-room event:", data.pdfUrl);
+        
+        // Convert Firebase URL to proxy URL to bypass CORS
+        const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
+        console.log('🔄 Using proxy URL for PDF:', proxyUrl);
+        
+        setPdfUrl(proxyUrl);
+        setShowPdfViewer(true);
+        // Store original Firebase URL in localStorage for persistence
+        localStorage.setItem('presentation-pdf-url', data.pdfUrl);
+      }
     };
 
     const handleError = (errorMessage: string) => {
@@ -94,6 +172,22 @@ export default function JoinRoomPage() {
       }
     };
 
+    const handleRoomPdfUpdate = (data: any) => {
+      console.log("Room PDF update:", data);
+      if (data.joinCode === joinCode && data.pdfUrl) {
+        console.log("📄 Received PDF URL for room:", data.pdfUrl);
+        
+        // Convert Firebase URL to proxy URL to bypass CORS
+        const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
+        console.log('🔄 Using proxy URL for PDF:', proxyUrl);
+        
+        setPdfUrl(proxyUrl);
+        setShowPdfViewer(true);
+        // Store original Firebase URL in localStorage for persistence
+        localStorage.setItem('presentation-pdf-url', data.pdfUrl);
+      }
+    };
+
     // Add event listeners
     socket.on("joined-room", handleJoinedRoom);
     socket.on("error", handleError);
@@ -101,6 +195,7 @@ export default function JoinRoomPage() {
     socket.on("question-updated", handleQuestionUpdated);
     socket.on("questions-list", handleQuestionsList);
     socket.on("transcription-update", handleTranscriptionUpdate);
+    socket.on("room-pdf-update", handleRoomPdfUpdate);
 
     // Cleanup
     return () => {
@@ -110,6 +205,7 @@ export default function JoinRoomPage() {
       socket.off("question-updated", handleQuestionUpdated);
       socket.off("questions-list", handleQuestionsList);
       socket.off("transcription-update", handleTranscriptionUpdate);
+      socket.off("room-pdf-update", handleRoomPdfUpdate);
     };
   }, [socket]);
 
@@ -181,6 +277,27 @@ export default function JoinRoomPage() {
         history
       });
     }
+  };
+
+  // PDF-related handlers
+  const handlePageChange = (page: number) => {
+    console.log('📄 Page changed to:', page);
+    setCurrentPage(page);
+  };
+
+  const handleTotalPagesChange = (pages: number) => {
+    console.log('📄 Total pages:', pages);
+    setTotalPages(pages);
+  };
+
+  const handleFitModeChange = (mode: 'width' | 'height' | 'page' | 'auto') => {
+    console.log('📄 Fit mode changed to:', mode);
+    setFitMode(mode);
+  };
+
+  const togglePdfViewer = () => {
+    console.log('📄 Toggling PDF viewer, current state:', showPdfViewer);
+    setShowPdfViewer(!showPdfViewer);
   };
 
   // Remove authentication requirement - allow anonymous users
@@ -334,6 +451,100 @@ export default function JoinRoomPage() {
                 </div>
               )}
             </div>
+
+            {/* PDF Viewer Section */}
+            {pdfUrl && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+                backdropFilter: 'blur(15px)',
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '24px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: 'white',
+                    margin: 0,
+                    textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+                  }}>
+                    📄 Presentation PDF
+                  </h3>
+                  <button
+                    onClick={togglePdfViewer}
+                    style={{
+                      padding: '8px 16px',
+                      background: showPdfViewer 
+                        ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
+                        : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+                    }}
+                  >
+                    {showPdfViewer ? '🔼 Hide PDF' : '🔽 Show PDF'}
+                  </button>
+                </div>
+                
+                {showPdfViewer && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                    backdropFilter: 'blur(20px)',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    height: '600px',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }}>
+                    {/* PDF Toolbar */}
+                    {totalPages > 0 && (
+                      <PDFToolbar
+                        fitMode={fitMode}
+                        onFitModeChange={handleFitModeChange}
+                        className="flex-shrink-0"
+                      />
+                    )}
+                    
+                    {/* PDF Viewer */}
+                    <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, height: 'calc(100% - 120px)' }}>
+                      <PDFViewer
+                        pdfUrl={pdfUrl}
+                        currentPage={currentPage}
+                        onPageChange={handlePageChange}
+                        onPDFLoad={handleTotalPagesChange}
+                        fitMode={fitMode}
+                        className="h-full"
+                      />
+                    </div>
+
+                    {/* PDF Navigation */}
+                    {totalPages > 0 && (
+                      <PDFNavigation
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={handlePageChange}
+                        className="flex-shrink-0"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Role Instructions */}
             <div style={{
@@ -860,6 +1071,9 @@ export default function JoinRoomPage() {
         @keyframes twinkle {
           0% { opacity: 0.3; }
           100% { opacity: 0.8; }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

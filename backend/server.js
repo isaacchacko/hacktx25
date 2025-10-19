@@ -5,6 +5,7 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 const admin = require("firebase-admin");
+const axios = require("axios");
 
 const app = express();
 const server = createServer(app);
@@ -36,6 +37,44 @@ if (process.env.FIREBASE_PROJECT_ID) {
 
 // Enable CORS for all origins
 app.use(cors());
+
+// PDF proxy endpoint to bypass CORS issues
+app.get('/api/pdf-proxy', async (req, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'PDF URL is required' });
+    }
+    
+    console.log('📄 Proxying PDF request for URL:', url);
+    
+    // Fetch the PDF from Firebase Storage
+    const response = await axios.get(url, {
+      responseType: 'stream',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; PDF-Proxy/1.0)'
+      }
+    });
+    
+    // Set appropriate headers
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'inline',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Cache-Control': 'public, max-age=3600'
+    });
+    
+    // Pipe the PDF data to the response
+    response.data.pipe(res);
+    
+  } catch (error) {
+    console.error('❌ Error proxying PDF:', error.message);
+    res.status(500).json({ error: 'Failed to load PDF' });
+  }
+});
 
 const io = new Server(server, {
   cors: {
@@ -284,6 +323,71 @@ io.on("connection", (socket) => {
     socket.emit("joined-room", joinedRoomData);
   });
 
+  // Handle creating a new room with PDF
+  socket.on("create-room-with-pdf", (data) => {
+    console.log('🏠 Received create-room-with-pdf request:', data);
+    
+    if (!socket.userId) {
+      socket.emit("error", "User not authenticated");
+      return;
+    }
+    
+    if (socket.isAnonymous) {
+      socket.emit("error", "Anonymous users cannot create rooms. Please sign in to create a room.");
+      return;
+    }
+
+    const { pdfUrl } = data;
+    if (!pdfUrl) {
+      socket.emit("error", "PDF URL is required");
+      return;
+    }
+    
+    const joinCode = uuidv4().slice(0, 8); // Generate 8-character room code
+    
+    // Create the room with PDF data
+    rooms.set(joinCode, {
+      members: new Set(),
+      createdAt: new Date(),
+      questions: [],
+      presenterId: socket.userId,
+      presenterEmail: socket.userEmail,
+      pdfUrl: pdfUrl // Store PDF URL in room data
+    });
+
+    // Join the room
+    socket.join(joinCode);
+    const room = rooms.get(joinCode);
+    room.members.add(socket.userId);
+    
+    // Update user's room list
+    const userData = userSessions.get(socket.userId);
+    if (userData) {
+      userData.rooms.add(joinCode);
+    }
+    
+    console.log(`Room ${joinCode} created by presenter ${socket.userEmail} (${socket.userId}) with PDF: ${pdfUrl}`);
+    console.log(`Room ${joinCode} now has ${room.members.size} members`);
+    
+    // Notify the creator
+    socket.emit("room-created", {
+      joinCode,
+      message: `Room ${joinCode} created successfully with PDF`,
+      pdfUrl: pdfUrl
+    });
+
+    // Also send joined-room event to set presenter status
+    const joinedRoomData = {
+      joinCode,
+      memberCount: room.members.size,
+      message: `Successfully joined room ${joinCode}`,
+      isPresenter: true,
+      pdfUrl: pdfUrl
+    };
+    console.log('Sending joined-room event with isPresenter and PDF URL:', joinedRoomData);
+    socket.emit("joined-room", joinedRoomData);
+  });
+
   // Handle joining a room
   socket.on("join-room", (joinCode) => {
     if (!joinCode) {
@@ -325,10 +429,12 @@ io.on("connection", (socket) => {
       joinCode,
       memberCount: room.members.size,
       message: `Successfully joined room ${joinCode}`,
-      isPresenter: room.presenterId === socket.userId
+      isPresenter: room.presenterId === socket.userId,
+      pdfUrl: room.pdfUrl || null // Include PDF URL if room has one
     };
     console.log(`Room ${joinCode} presenterId:`, room.presenterId);
     console.log(`User ${socket.userId} isPresenter:`, joinedRoomData.isPresenter);
+    console.log(`Room ${joinCode} has PDF URL:`, joinedRoomData.pdfUrl);
     socket.emit("joined-room", joinedRoomData);
 
     // Notify other members in the room

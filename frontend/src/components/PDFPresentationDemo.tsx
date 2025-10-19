@@ -38,7 +38,7 @@ const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
 
 const PDFPresentationDemo: React.FC = () => {
   const router = useRouter();
-  const { socket, isConnected, createRoom, currentRoom, isAnonymous } = useSocket();
+  const { socket, isConnected, createRoom, createRoomWithPdf, currentRoom, isAnonymous } = useSocket();
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -95,6 +95,7 @@ const PDFPresentationDemo: React.FC = () => {
     }
 
     try {
+      console.log('🚀 Starting presentation creation process...');
       setIsUploading(true);
       setIsCreatingRoom(true);
       setError(null);
@@ -105,6 +106,12 @@ const PDFPresentationDemo: React.FC = () => {
       let fileSize = 0;
 
       if (pdfFile && pdfUrl.startsWith('blob:')) {
+        console.log('📁 Uploading file to Firebase Storage...', {
+          fileName: pdfFile.name,
+          fileSize: pdfFile.size,
+          fileType: pdfFile.type
+        });
+        
         fileName = pdfFile.name;
         fileSize = pdfFile.size;
 
@@ -115,17 +122,22 @@ const PDFPresentationDemo: React.FC = () => {
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             setUploadProgress(progress);
+            console.log(`📤 Upload progress: ${Math.round(progress)}%`);
           },
           (error) => {
-            console.error('Upload error:', error);
+            console.error('❌ Upload error:', error);
             throw error;
           }
         );
 
         await uploadTask;
         finalPdfUrl = await storageRef.getDownloadURL();
+        console.log('✅ File uploaded successfully to Firebase Storage:', finalPdfUrl);
+      } else {
+        console.log('🌐 Using external PDF URL:', finalPdfUrl);
       }
 
+      console.log('💾 Saving presentation metadata to Firestore...');
       const presentationDoc = await db.collection('presentations').add({
         pdfUrl: finalPdfUrl,
         pdfType: pdfFile ? 'uploaded' : 'external',
@@ -136,14 +148,19 @@ const PDFPresentationDemo: React.FC = () => {
         createdAt: new Date().toISOString(),
       });
 
+      console.log('✅ Presentation saved to Firestore with ID:', presentationDoc.id);
+
+      // Store in localStorage for room access
       localStorage.setItem('presentation-id', presentationDoc.id);
       localStorage.setItem('presentation-pdf-url', finalPdfUrl);
+      console.log('💾 Stored presentation data in localStorage');
 
-      // Create room using socket
-      createRoom();
+      // Create room using socket with PDF URL
+      console.log('🏠 Creating room with PDF URL:', finalPdfUrl);
+      createRoomWithPdf(finalPdfUrl);
 
     } catch (error) {
-      console.error('Error creating presentation:', error);
+      console.error('❌ Error creating presentation:', error);
       setError('Failed to create presentation. Please try again.');
       setIsCreatingRoom(false);
     } finally {
