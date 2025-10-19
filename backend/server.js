@@ -35,6 +35,58 @@ if (process.env.FIREBASE_PROJECT_ID) {
   console.log("Firebase Admin SDK not initialized - using mock authentication");
 }
 
+// AI Insights Analysis Function
+async function analyzeQuestionInsights(joinCode, questions, pdfText, totalPages, summary) {
+  try {
+    console.log(`🤖 Analyzing questions for room ${joinCode}...`);
+    console.log(`🤖 Questions count: ${questions.length}, PDF text length: ${pdfText.length}, Total pages: ${totalPages}`);
+    
+    // Try different frontend URLs
+    const frontendUrls = [
+      'http://localhost:3000/api/ai-insights',
+      'http://127.0.0.1:3000/api/ai-insights'
+    ];
+    
+    let lastError;
+    for (const url of frontendUrls) {
+      try {
+        console.log(`🤖 Trying frontend URL: ${url}`);
+        const response = await axios.post(url, {
+          questions,
+          pdfText,
+          totalPages,
+          overallSummary: summary
+        }, {
+          timeout: 30000, // 30 second timeout
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log(`✅ Successfully called frontend API at ${url}`);
+        console.log(`📊 Response status: ${response.status}`);
+        console.log(`📊 Response data:`, response.data);
+        
+        if (response.data && response.data.success) {
+          return response.data;
+        } else {
+          throw new Error(response.data?.error || 'AI insights analysis failed');
+        }
+      } catch (urlError) {
+        console.error(`❌ Failed to call ${url}:`, urlError.message);
+        lastError = urlError;
+        continue;
+      }
+    }
+    
+    throw lastError || new Error('All frontend URLs failed');
+  } catch (error) {
+    console.error('❌ AI insights analysis error:', error.message);
+    console.error('❌ Full error:', error);
+    throw error;
+  }
+}
+
 // Enable CORS for all origins
 app.use(cors());
 
@@ -317,7 +369,10 @@ io.on("connection", (socket) => {
       joinCode,
       memberCount: room.members.size,
       message: `Successfully joined room ${joinCode}`,
-      isPresenter: true
+      isPresenter: true,
+      questions: room.questions || [],
+      pdfText: room.pdfText || '',
+      totalPages: room.totalPages || 0
     };
     console.log('Sending joined-room event with isPresenter:', joinedRoomData.isPresenter);
     socket.emit("joined-room", joinedRoomData);
@@ -392,7 +447,10 @@ io.on("connection", (socket) => {
       pdfUrl: pdfUrl,
       summary: summary || '',
       pageTexts: pageTexts || [],
-      currentPage: room.currentPage || 1
+      currentPage: room.currentPage || 1,
+      questions: room.questions || [],
+      pdfText: room.pdfText || '',
+      totalPages: room.totalPages || 0
     };
     console.log('Sending joined-room event with isPresenter, PDF URL, summary, and page texts:', joinedRoomData);
     socket.emit("joined-room", joinedRoomData);
@@ -447,13 +505,19 @@ io.on("connection", (socket) => {
       pdfUrl: room.pdfUrl || null, // Include PDF URL if room has one
       summary: room.summary || '', // Include PDF summary if room has one
       pageTexts: room.pageTexts || [], // Include PDF page texts if room has them
-      currentPage: room.currentPage || 1 // Include current PDF page
+      currentPage: room.currentPage || 1, // Include current PDF page
+      questions: room.questions || [], // Include questions if room has them
+      pdfText: room.pdfText || '', // Include PDF text for AI insights
+      totalPages: room.totalPages || 0 // Include total pages for AI insights
     };
     console.log(`Room ${joinCode} presenterId:`, room.presenterId);
     console.log(`User ${socket.userId} isPresenter:`, joinedRoomData.isPresenter);
     console.log(`Room ${joinCode} has PDF URL:`, joinedRoomData.pdfUrl);
     console.log(`Room ${joinCode} has summary:`, joinedRoomData.summary ? 'Yes' : 'No');
     console.log(`Room ${joinCode} has page texts:`, joinedRoomData.pageTexts.length > 0 ? `Yes (${joinedRoomData.pageTexts.length} pages)` : 'No');
+    console.log(`Room ${joinCode} has questions:`, joinedRoomData.questions.length > 0 ? `Yes (${joinedRoomData.questions.length} questions)` : 'No');
+    console.log(`Room ${joinCode} has PDF text:`, joinedRoomData.pdfText ? `Yes (${joinedRoomData.pdfText.length} chars)` : 'No');
+    console.log(`Room ${joinCode} has total pages:`, joinedRoomData.totalPages > 0 ? `Yes (${joinedRoomData.totalPages} pages)` : 'No');
     socket.emit("joined-room", joinedRoomData);
 
     // Notify other members in the room
@@ -515,6 +579,9 @@ io.on("connection", (socket) => {
     console.log("📤 Broadcasting new-question to room:", joinCode);
     io.to(joinCode).emit("new-question", newQuestion);
     console.log("✅ Question broadcasted successfully");
+
+    // AI insights are now handled by the frontend
+    console.log("📝 Question posted, AI insights will be handled by frontend");
   });
 
   // Handle voting on questions

@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import Navbar from "../../components/Navbar";
 import { VoiceRecordingControls } from "../../components/VoiceRecordingControls";
 import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
+import AIInsightsPanel from "../../components/AIInsightsPanel";
 import { generateMultipleSummaries, SummaryRequest, getQuestionSuggestions, QuestionSuggestionsContext } from "../../utils/geminiApi";
 
 // Dynamically import PDF components to prevent SSR issues
@@ -75,6 +76,14 @@ interface PageTranscription {
   endTime?: number;
 }
 
+interface AIInsights {
+  confusedAreas: string[];
+  suggestedSlideNumbers: number[];
+  analysis: string;
+  success: boolean;
+  error?: string;
+}
+
 export default function JoinRoomPage() {
   const params = useParams();
   const router = useRouter();
@@ -96,6 +105,10 @@ export default function JoinRoomPage() {
   // PDF context state for suggestions
   const [pdfSummary, setPdfSummary] = useState<string>('');
   const [pdfPageTexts, setPdfPageTexts] = useState<string[]>([]);
+
+  // AI insights state
+  const [aiInsights, setAiInsights] = useState<AIInsights | null>(null);
+  const [showAIInsights, setShowAIInsights] = useState(false);
 
   // Transcription state
   const [liveTranscription, setLiveTranscription] = useState("");
@@ -121,10 +134,94 @@ export default function JoinRoomPage() {
   const [viewByPage, setViewByPage] = useState(false); // Toggle between views
   const [isInitialized, setIsInitialized] = useState(false);
   
+  // AI Insights trigger function
+  const triggerAIInsights = useCallback(async (questionsList: Question[]) => {
+    try {
+      console.log("🚀 Starting AI insights analysis...");
+      console.log("📊 Analysis data:", {
+        questionsCount: questionsList.length,
+        questions: questionsList.map(q => q.text),
+        hasPdfSummary: !!pdfSummary,
+        pdfSummaryLength: pdfSummary.length,
+        hasTotalPages: totalPages > 0,
+        totalPages,
+        hasPdfPageTexts: pdfPageTexts.length > 0,
+        pdfPageTextsLength: pdfPageTexts.length
+      });
+
+      // Prepare the request body
+      const requestBody = {
+        questions: questionsList.map(q => q.text),
+        pdfText: pdfPageTexts.join('\n\n') || 'No PDF text available',
+        totalPages: totalPages || 1,
+        overallSummary: pdfSummary || 'No summary available'
+      };
+
+      console.log("📤 Sending request to /api/ai-insights:", requestBody);
+
+      const response = await fetch('/api/ai-insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log("📥 Response received:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ API response not OK:", errorText);
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const insights = await response.json();
+      console.log("✅ AI insights received from API:", insights);
+
+      if (insights.success) {
+        console.log("🎉 AI insights analysis successful!");
+        setAiInsights(insights);
+        setShowAIInsights(true);
+      } else {
+        console.error("❌ AI insights analysis failed:", insights.error);
+        // Still set the insights to show the error state
+        setAiInsights(insights);
+        setShowAIInsights(true);
+      }
+    } catch (error) {
+      console.error("💥 AI insights analysis error:", error);
+      
+      // Set a fallback error state
+      const errorInsights = {
+        confusedAreas: [],
+        suggestedSlideNumbers: [],
+        analysis: 'Failed to analyze questions. Please try again.',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+      
+      console.log("🔄 Setting error insights:", errorInsights);
+      setAiInsights(errorInsights);
+      setShowAIInsights(true);
+    }
+  }, [pdfSummary, totalPages, pdfPageTexts]);
+
   // Debug logging for presenter current page changes
   useEffect(() => {
     console.log('📄 Presenter current page updated to:', presenterCurrentPage);
   }, [presenterCurrentPage]);
+
+  // Trigger AI insights when PDF data becomes available and we have questions
+  useEffect(() => {
+    if (questions.length >= 3 && pdfSummary && totalPages > 0) {
+      console.log("🤖 PDF data available, triggering AI insights...");
+      triggerAIInsights(questions);
+    }
+  }, [questions, pdfSummary, totalPages, triggerAIInsights]);
 
   // Load PDF URL from localStorage on component mount
   useEffect(() => {
@@ -177,6 +274,14 @@ export default function JoinRoomPage() {
     // Set up event listeners
     const handleJoinedRoom = (data: any) => {
       console.log("Joined room:", data);
+      console.log("🔍 Room data for AI insights:", {
+        hasQuestions: !!(data.questions && data.questions.length > 0),
+        questionsCount: data.questions ? data.questions.length : 0,
+        hasPdfText: !!data.pdfText,
+        hasTotalPages: !!data.totalPages,
+        hasSummary: !!data.summary,
+        hasPageTexts: !!(data.pageTexts && data.pageTexts.length > 0)
+      });
       setError(null);
 
       // Handle PDF URL if present in joined room data
@@ -204,6 +309,28 @@ export default function JoinRoomPage() {
         setPdfPageTexts(data.pageTexts);
       }
 
+      // Set questions if present
+      if (data.questions && Array.isArray(data.questions)) {
+        console.log("📝 Received questions:", data.questions.length, "questions");
+        setQuestions(data.questions);
+        
+        // Trigger AI insights if we have enough questions and PDF data
+        if (data.questions.length >= 3 && data.summary && data.totalPages > 0) {
+          console.log("🤖 Triggering AI insights from joined room data...");
+          // Use a timeout to ensure state is updated
+          setTimeout(() => {
+            triggerAIInsights(data.questions);
+          }, 100);
+        } else {
+          console.log("⏭️ Skipping AI insights from joined room - conditions not met:", {
+            questionsCount: data.questions.length,
+            hasSummary: !!data.summary,
+            hasTotalPages: data.totalPages > 0,
+            totalPages: data.totalPages
+          });
+        }
+      }
+
       // Set initial presenter current page if available
       if (data.currentPage) {
         console.log("📄 Setting initial presenter page:", data.currentPage);
@@ -218,7 +345,25 @@ export default function JoinRoomPage() {
 
     const handleNewQuestion = (question: Question) => {
       console.log("New question:", question);
-      setQuestions(prev => [...prev, question]);
+      setQuestions(prev => {
+        const newQuestions = [...prev, question];
+        console.log("📝 Updated questions array:", newQuestions);
+        
+        // Trigger AI insights analysis if we have enough questions and PDF data
+        if (newQuestions.length >= 3 && pdfSummary && totalPages > 0) {
+          console.log("🤖 Triggering AI insights from frontend...");
+          triggerAIInsights(newQuestions);
+        } else {
+          console.log("⏭️ Skipping AI insights - conditions not met:", {
+            questionsCount: newQuestions.length,
+            hasPdfSummary: !!pdfSummary,
+            hasTotalPages: totalPages > 0,
+            totalPages
+          });
+        }
+        
+        return newQuestions;
+      });
     };
 
     const handleQuestionUpdated = (question: Question) => {
@@ -229,6 +374,19 @@ export default function JoinRoomPage() {
     const handleQuestionsList = (questionsList: Question[]) => {
       console.log("Questions list:", questionsList);
       setQuestions(questionsList);
+      
+      // Trigger AI insights if we have enough questions and PDF data
+      if (questionsList.length >= 3 && pdfSummary && totalPages > 0) {
+        console.log("🤖 Triggering AI insights from questions list...");
+        triggerAIInsights(questionsList);
+      } else {
+        console.log("⏭️ Skipping AI insights from questions list - conditions not met:", {
+          questionsCount: questionsList.length,
+          hasPdfSummary: !!pdfSummary,
+          hasTotalPages: totalPages > 0,
+          totalPages
+        });
+      }
     };
 
     const handleTranscriptionUpdate = (data: any) => {
@@ -266,6 +424,13 @@ export default function JoinRoomPage() {
       }
     };
 
+    const handleAIInsights = (insights: AIInsights) => {
+      console.log("🤖 AI insights received:", insights);
+      console.log("🤖 Setting AI insights state and showing panel");
+      setAiInsights(insights);
+      setShowAIInsights(true);
+    };
+
     // Add event listeners
     socket.on("joined-room", handleJoinedRoom);
     socket.on("error", handleError);
@@ -275,6 +440,7 @@ export default function JoinRoomPage() {
     socket.on("transcription-update", handleTranscriptionUpdate);
     socket.on("room-pdf-update", handleRoomPdfUpdate);
     socket.on("pdf-page-updated", handlePdfPageUpdate);
+    socket.on("ai-insights", handleAIInsights);
 
     // Cleanup
     return () => {
@@ -286,6 +452,7 @@ export default function JoinRoomPage() {
       socket.off("transcription-update", handleTranscriptionUpdate);
       socket.off("room-pdf-update", handleRoomPdfUpdate);
       socket.off("pdf-page-updated", handlePdfPageUpdate);
+      socket.off("ai-insights", handleAIInsights);
     };
   }, [socket]);
 
@@ -880,6 +1047,76 @@ export default function JoinRoomPage() {
               <VoiceRecordingControls onTranscriptionUpdate={handleTranscriptionUpdate} />
             )}
 
+            {/* AI Insights Trigger - Only for Presenters */}
+            {isPresenter && questions.length >= 3 && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '12px',
+                marginTop: '16px'
+              }}>
+                <button
+                  onClick={() => {
+                    console.log("🤖 AI Insights button clicked. Current state:", {
+                      showAIInsights,
+                      hasInsights: !!aiInsights,
+                      insightsData: aiInsights
+                    });
+                    setShowAIInsights(!showAIInsights);
+                  }}
+                  style={{
+                    backgroundColor: showAIInsights ? '#4a9eff' : '#2a2a2a',
+                    color: '#ffffff',
+                    border: '1px solid #4a9eff',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = showAIInsights ? '#5ba8ff' : '#3a3a3a';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = showAIInsights ? '#4a9eff' : '#2a2a2a';
+                  }}
+                >
+                  <span>🤖</span>
+                  {showAIInsights ? 'Hide AI Insights' : 'Show AI Insights'}
+                  {aiInsights && <span style={{ fontSize: '10px', opacity: 0.7 }}> (Available)</span>}
+                </button>
+                
+                {/* Test AI Insights Button */}
+                <button
+                  onClick={() => {
+                    console.log("🧪 Testing AI insights manually...");
+                    triggerAIInsights(questions);
+                  }}
+                  style={{
+                    backgroundColor: '#ff6b6b',
+                    color: '#ffffff',
+                    border: '1px solid #ff6b6b',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>🧪</span>
+                  Test AI
+                </button>
+              </div>
+            )}
+
             {/* Live Transcription Display - For All Users */}
             {(liveTranscription || transcriptionHistory.length > 0) && (
               <TranscriptionDisplay
@@ -1410,6 +1647,19 @@ export default function JoinRoomPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Insights Panel - Only visible to presenters */}
+      {isPresenter && (
+        <AIInsightsPanel
+          insights={aiInsights}
+          isVisible={showAIInsights}
+          onClose={() => setShowAIInsights(false)}
+          onNavigateToSlide={(slideNumber) => {
+            handlePageChange(slideNumber);
+            setShowAIInsights(false);
+          }}
+        />
+      )}
 
       <style jsx global>{`
         @keyframes twinkle {

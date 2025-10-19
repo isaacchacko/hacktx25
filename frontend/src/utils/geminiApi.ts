@@ -183,6 +183,21 @@ export interface QuestionSuggestionsContext {
   transcriptionHistory?: Array<{text: string; confidence: number; timestamp: number}>;
 }
 
+export interface AIInsightsRequest {
+  questions: string[];
+  pdfText: string;
+  totalPages: number;
+  overallSummary?: string;
+}
+
+export interface AIInsightsResponse {
+  confusedAreas: string[];
+  suggestedSlideNumbers: number[];
+  analysis: string;
+  success: boolean;
+  error?: string;
+}
+
 /**
  * Generate a comprehensive summary of a PDF document using Gemini API
  */
@@ -410,6 +425,165 @@ Return 3 question suggestions as a JSON array:`;
       suggestions: [],
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error during question suggestion generation'
+    };
+  }
+}
+
+/**
+ * Analyze student questions to identify confused content areas and suggest slides to revisit
+ */
+export async function analyzeQuestionConfusion(
+  request: AIInsightsRequest
+): Promise<AIInsightsResponse> {
+  try {
+    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+      throw new Error('Gemini API key not found. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.');
+    }
+
+    console.log('🔑 Gemini API key found for AI insights analysis');
+    console.log('📊 Questions count:', request.questions.length);
+    console.log('📄 PDF text length:', request.pdfText.length);
+
+    if (!request.questions || request.questions.length === 0) {
+      return {
+        confusedAreas: [],
+        suggestedSlideNumbers: [],
+        analysis: 'No questions available for analysis.',
+        success: true
+      };
+    }
+
+    // Try different Gemini models
+    let model;
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-pro-latest'];
+    
+    for (const modelName of modelsToTry) {
+      try {
+        model = genAI.getGenerativeModel({ model: modelName });
+        console.log(`✅ Using model for AI insights: ${modelName}`);
+        break;
+      } catch (modelError) {
+        console.log(`❌ ${modelName} not available for AI insights, trying next...`);
+      }
+    }
+    
+    if (!model) {
+      throw new Error('No available Gemini models found for AI insights');
+    }
+
+    // Prepare the questions list
+    const questionsList = request.questions
+      .map((q, i) => `${i + 1}. ${q}`)
+      .join('\n');
+
+    // Truncate PDF text if too long (keep first 6000 chars to leave room for other content)
+    const truncatedPdfText = request.pdfText.length > 6000 
+      ? request.pdfText.substring(0, 6000) + '\n\n[Content truncated for API limits]'
+      : request.pdfText;
+
+    const prompt = `You are an AI assistant helping a presenter understand what content areas students are most confused about based on their questions.
+
+ANALYSIS TASK:
+Analyze the student questions and the presentation content to identify 1-2 main content areas where students seem confused. Then suggest specific slide numbers the presenter should revisit to clarify these areas.
+
+STUDENT QUESTIONS:
+${questionsList}
+
+PRESENTATION CONTENT:
+${request.overallSummary ? `\nOVERALL SUMMARY:\n${request.overallSummary}` : ''}
+
+FULL PDF TEXT:
+${truncatedPdfText}
+
+TOTAL SLIDES: ${request.totalPages}
+
+INSTRUCTIONS:
+1. Identify 1-2 main content areas where students are most confused (be specific and concise)
+2. For each confused area, suggest 1-2 specific slide numbers that best address that confusion
+3. Provide a brief analysis explaining why these areas are confusing and why those slides should be revisited
+4. Focus on content clarity issues, not just any questions asked
+5. Be specific about slide numbers (1-${request.totalPages})
+
+RESPONSE FORMAT (return as valid JSON):
+{
+  "confusedAreas": ["Area 1 description", "Area 2 description"],
+  "suggestedSlideNumbers": [slide1, slide2],
+  "analysis": "Brief explanation of the confusion patterns and why these slides should be revisited"
+}
+
+Example response:
+{
+  "confusedAreas": ["Machine learning algorithm selection criteria", "Data preprocessing steps"],
+  "suggestedSlideNumbers": [3, 7],
+  "analysis": "Students are asking many questions about how to choose between different ML algorithms and the specific steps for data cleaning. Slides 3 and 7 cover these topics but may need more detailed examples."
+}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().trim();
+
+    console.log('🤖 Raw AI insights response:', text);
+
+    // Parse the response
+    let insights: AIInsightsResponse;
+    
+    try {
+      // Clean up the response
+      let cleanedText = text
+        .replace(/^```json\s*/gm, '')  // Remove opening ```json
+        .replace(/^```\s*$/gm, '')     // Remove closing ```
+        .replace(/```json\s*/g, '')    // Remove inline ```json
+        .replace(/```\s*/g, '')        // Remove inline ```
+        .trim();
+
+      console.log('🧹 Cleaned AI insights response:', cleanedText);
+      
+      const parsed = JSON.parse(cleanedText);
+      
+      // Validate the response structure
+      if (parsed.confusedAreas && Array.isArray(parsed.confusedAreas) &&
+          parsed.suggestedSlideNumbers && Array.isArray(parsed.suggestedSlideNumbers) &&
+          parsed.analysis && typeof parsed.analysis === 'string') {
+        
+        // Ensure slide numbers are within valid range
+        const validSlideNumbers = parsed.suggestedSlideNumbers
+          .filter((num: number) => typeof num === 'number' && num >= 1 && num <= request.totalPages)
+          .slice(0, 2); // Limit to 2 slides max
+        
+        insights = {
+          confusedAreas: parsed.confusedAreas.slice(0, 2), // Limit to 2 areas max
+          suggestedSlideNumbers: validSlideNumbers,
+          analysis: parsed.analysis,
+          success: true
+        };
+      } else {
+        throw new Error('Invalid response structure from AI');
+      }
+    } catch (parseError) {
+      console.error('❌ Failed to parse AI insights response:', parseError);
+      
+      // Fallback response
+      insights = {
+        confusedAreas: ['Content understanding needs clarification'],
+        suggestedSlideNumbers: [1],
+        analysis: 'Students have questions that suggest some content areas need further explanation. Consider reviewing the presentation flow.',
+        success: false,
+        error: 'Failed to parse AI response'
+      };
+    }
+
+    console.log('✅ Processed AI insights:', insights);
+    return insights;
+
+  } catch (error) {
+    console.error('Error analyzing question confusion:', error);
+    
+    return {
+      confusedAreas: [],
+      suggestedSlideNumbers: [],
+      analysis: 'Unable to analyze questions at this time.',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error during AI insights analysis'
     };
   }
 }
