@@ -46,7 +46,7 @@ export default function Navbar() {
           cursor: 'pointer'
         }}>
           <StarLogo size={36} />
-          <span>PromptDeck</span>
+          <span>Power Presenter</span>
         </div>
       </Link>
 

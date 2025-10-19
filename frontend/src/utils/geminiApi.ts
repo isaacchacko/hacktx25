@@ -43,6 +43,19 @@ export async function generateSlideSummary(
     console.log('🔑 Gemini API key found, length:', process.env.NEXT_PUBLIC_GEMINI_API_KEY.length);
     console.log('🔑 API key starts with:', process.env.NEXT_PUBLIC_GEMINI_API_KEY.substring(0, 10) + '...');
 
+    // Debug logging of incoming transcription and context
+    console.log('🧪 generateSlideSummary(): incoming', {
+      pageNumber,
+      transcriptionLen: transcriptionText ? transcriptionText.length : 0,
+      transcriptionPreview: (transcriptionText || '').slice(0, 160),
+      hasSlideText: !!context?.slideText,
+      slideTextLen: context?.slideText ? context.slideText.length : 0,
+      overallSummaryLen: context?.overallSummary ? context.overallSummary.length : 0,
+      totalPages: context?.totalPages,
+      currentPage: context?.currentPage,
+      isPresenter: context?.isPresenter
+    });
+
     if (!transcriptionText || transcriptionText.trim() === '') {
       return {
         pageNumber,
@@ -83,10 +96,10 @@ SLIDE CONTENT:
 "${context.slideText || 'No slide content available'}"`;
     }
 
-    const prompt = `Please create a concise, professional summary of the following presentation slide transcription. 
+    const prompt = `Please create a concise, professional summary of the following presentation slide transcription.
 Use the provided slide content and overall presentation context to create a more accurate and relevant summary.
 Remove filler words, unnecessary repetitions, and make it more concise while preserving the key information.
-If the transcription is empty or contains only filler words, respond with "Blank".
+Only respond with "Blank" if the transcription is actually empty.
 
 ${contextInfo}
 
@@ -102,6 +115,7 @@ INSTRUCTIONS:
 
 Summary:`;
 
+    console.log('🧪 generateSlideSummary(): prompt preview', prompt.slice(0, 1000));
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const summary = response.text().trim();
@@ -138,6 +152,16 @@ export async function generateMultipleSummaries(
   
   // Process slides sequentially to avoid rate limiting
   for (const request of requests) {
+    console.log('🧪 generateMultipleSummaries(): request', {
+      pageNumber: request.pageNumber,
+      transcriptionLen: request.transcriptionText ? request.transcriptionText.length : 0,
+      transcriptionPreview: (request.transcriptionText || '').slice(0, 160),
+      slideTextLen: request.slideText ? request.slideText.length : 0,
+      overallSummaryLen: request.overallSummary ? request.overallSummary.length : 0,
+      totalPages: request.totalPages,
+      currentPage: request.currentPage,
+      isPresenter: request.isPresenter
+    });
     const context = {
       slideText: request.slideText,
       overallSummary: request.overallSummary,
@@ -147,6 +171,12 @@ export async function generateMultipleSummaries(
     };
     
     const result = await generateSlideSummary(request.pageNumber, request.transcriptionText, context);
+    console.log('🧪 generateMultipleSummaries(): response', {
+      pageNumber: result.pageNumber,
+      success: result.success,
+      summaryPreview: (result.summary || '').slice(0, 200),
+      error: result.error
+    });
     results.push(result);
     
     // Add a small delay between requests to be respectful to the API

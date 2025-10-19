@@ -12,6 +12,7 @@ import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
 import AIInsightsPanel from "../../components/AIInsightsPanel";
 import { generateMultipleSummaries, SummaryRequest, getQuestionSuggestions, QuestionSuggestionsContext } from "../../utils/geminiApi";
 import { usePresentationTimer } from "../../hooks/usePresentationTimer";
+import { generatePresentationSummaryPDF, downloadPDF, generateFilename } from "../../utils/pdfGenerator";
 
 // Dynamically import PDF components to prevent SSR issues
 const PDFViewer = dynamic(() => import("../../components/PDFViewer"), {
@@ -174,6 +175,10 @@ export default function JoinRoomPage() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+  
+  // Summary generation state and PDF viewer ref
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const pdfViewerRef = useRef<HTMLDivElement>(null);
   
   // AI Insights trigger function
   const triggerAIInsights = useCallback(async (questionsList: Question[]) => {
@@ -781,6 +786,126 @@ export default function JoinRoomPage() {
 
   // Remove authentication requirement - allow anonymous users
 
+  // Generate summary for all slides with enhanced context
+  const generateSummary = useCallback(async () => {
+    setIsGeneratingSummary(true);
+    try {
+      // Prefer in-memory PDF context first, fallback to localStorage
+      const overallSummary = pdfSummary || localStorage.getItem('presentation-summary') || '';
+      const pageTexts: string[] = (pdfPageTexts && pdfPageTexts.length > 0)
+        ? pdfPageTexts
+        : JSON.parse(localStorage.getItem('presentation-page-texts') || '[]');
+
+      console.log('🧪 generateSummary(): debugging context');
+      console.log(' - transcriptionHistory count:', transcriptionHistory.length);
+      console.log(' - transcriptionHistory sample:', transcriptionHistory.slice(-5));
+      console.log(' - transcriptionsByPage keys:', Object.keys(transcriptionsByPage));
+      console.log(' - totalPages:', totalPages, 'currentPage:', currentPage);
+      console.log(' - has overallSummary:', !!overallSummary, 'overallSummary length:', overallSummary.length);
+      console.log(' - pageTexts length:', pageTexts.length);
+
+      // Collect pages that have any transcription data
+      const pagesWithTranscriptions = Object.keys(transcriptionsByPage)
+        .map(Number)
+        .sort((a, b) => a - b);
+
+      if (pagesWithTranscriptions.length === 0) {
+        setIsGeneratingSummary(false);
+        return;
+      }
+
+      const summaryRequests: SummaryRequest[] = [];
+      for (const pageNumber of pagesWithTranscriptions) {
+        const pageData = transcriptionsByPage[pageNumber];
+        const slideText = pageTexts[pageNumber - 1] || '';
+
+        // Prefer stored per-page transcriptions
+        let perPageTexts = (pageData?.transcriptions || []).map(t => t.text);
+
+        // Fallback: derive from global transcriptionHistory using page time window
+        if ((!perPageTexts || perPageTexts.length === 0) && pageData?.startTime) {
+          const windowStart = pageData.startTime;
+          const windowEnd = pageData.endTime || Date.now();
+          perPageTexts = transcriptionHistory
+            .filter(t => t.timestamp >= windowStart && t.timestamp <= windowEnd)
+            .map(t => t.text);
+          console.log(` - page ${pageNumber}: using fallback history window`, { windowStart, windowEnd, matched: perPageTexts.length });
+        }
+
+        const combinedText = (perPageTexts || []).join(' ').trim();
+
+        console.log(` - page ${pageNumber}: pageData summary`, {
+          hasPageData: !!pageData,
+          transcriptionsCount: pageData?.transcriptions?.length || 0,
+          startTime: pageData?.startTime,
+          endTime: pageData?.endTime,
+          combinedLen: combinedText.length,
+          slideTextLen: slideText.length
+        });
+
+        // Skip pages that truly have no transcription text
+        if (!combinedText) {
+          console.log(`   -> page ${pageNumber}: skipped (no combined transcription text)`);
+          continue;
+        }
+
+        summaryRequests.push({
+          pageNumber,
+          transcriptionText: combinedText,
+          slideText,
+          overallSummary,
+          totalPages,
+          currentPage,
+          isPresenter
+        });
+      }
+
+      console.log('🧪 SummaryRequest payload (truncated):', summaryRequests.map(r => ({
+        pageNumber: r.pageNumber,
+        transcriptionPreview: r.transcriptionText.slice(0, 120),
+        transcriptionLen: r.transcriptionText.length,
+        slideTextPreview: (r.slideText || '').slice(0, 120),
+        slideTextLen: (r.slideText || '').length,
+        overallSummaryLen: (r.overallSummary || '').length,
+        totalPages: r.totalPages,
+        currentPage: r.currentPage
+      })));
+
+      const summaries = await generateMultipleSummaries(summaryRequests);
+      console.log('🧪 Gemini response (per item, truncated):', summaries.map(s => ({
+        pageNumber: s.pageNumber,
+        success: s.success,
+        summaryPreview: (s.summary || '').slice(0, 160),
+        error: s.error
+      })));
+      const sortedSummaries = summaries.sort((a, b) => a.pageNumber - b.pageNumber);
+
+      // Build PDF with slide images and summaries
+      const pdfBlob = await generatePresentationSummaryPDF(
+        sortedSummaries,
+        pdfViewerRef.current,
+        pageTexts,
+        totalPages,
+        currentPage,
+        pdfUrl,
+        {
+          title: 'Presentation Summary',
+          author: 'Presentation Platform',
+          subject: 'AI-Generated Slide Summaries',
+          roomCode: joinCode,
+          generatedAt: new Date()
+        }
+      );
+
+      const filename = generateFilename(joinCode);
+      downloadPDF(pdfBlob, filename);
+    } catch (error) {
+      console.error('Error generating PDF summary:', error);
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  }, [transcriptionsByPage, totalPages, currentPage, isPresenter, pdfUrl, joinCode]);
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -1135,7 +1260,7 @@ export default function JoinRoomPage() {
                     )}
 
                     {/* PDF Viewer */}
-                    <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, height: 'calc(100% - 120px)' }}>
+                    <div ref={pdfViewerRef} style={{ flex: 1, overflow: 'hidden', minHeight: 0, height: 'calc(100% - 120px)' }}>
                       <PDFViewer
                         pdfUrl={pdfUrl}
                         currentPage={currentPage}
@@ -1373,6 +1498,93 @@ export default function JoinRoomPage() {
                 viewByPage={viewByPage}
                 onToggleView={() => setViewByPage(!viewByPage)}
               />
+            )}
+
+            {/* Slide Summaries - Generate PDF */}
+            {(liveTranscription || transcriptionHistory.length > 0 || Object.keys(transcriptionsByPage).length > 0) && (
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '12px',
+                padding: '20px',
+                margin: '16px 0 24px 0',
+                border: '1px solid rgba(255,255,255,0.06)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: 'white',
+                    margin: 0,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Slide Summaries
+                  </h3>
+                  <div style={{
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'rgba(255,255,255,0.7)',
+                    border: '1px solid rgba(255,255,255,0.08)'
+                  }}>
+                    {Object.keys(transcriptionsByPage).length} slide{Object.keys(transcriptionsByPage).length !== 1 ? 's' : ''} with transcriptions
+                  </div>
+                </div>
+                <p style={{
+                  fontSize: '14px',
+                  color: 'rgba(255,255,255,0.8)',
+                  margin: '0 0 12px 0',
+                  lineHeight: '1.5'
+                }}>
+                  Generate intelligent summaries for each slide based on transcriptions and slide text. A PDF will download automatically.
+                </p>
+                <button
+                  onClick={generateSummary}
+                  disabled={isGeneratingSummary}
+                  style={{
+                    padding: '10px 16px',
+                    background: isGeneratingSummary ? 'rgba(108,117,125,0.2)' : 'rgba(40, 167, 69, 0.1)',
+                    color: isGeneratingSummary ? 'rgba(255,255,255,0.7)' : 'rgba(40, 167, 69, 0.9)',
+                    border: '1px solid rgba(40, 167, 69, 0.2)',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: isGeneratingSummary ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: isGeneratingSummary ? 0.7 : 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isGeneratingSummary) {
+                      e.currentTarget.style.background = 'rgba(40, 167, 69, 0.15)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (!isGeneratingSummary) {
+                      e.currentTarget.style.background = 'rgba(40, 167, 69, 0.1)';
+                    }
+                  }}
+                >
+                  {isGeneratingSummary ? (
+                    <>
+                      <div style={{
+                        width: '14px',
+                        height: '14px',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        borderTopColor: '#ffffff',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Generating...
+                    </>
+                  ) : (
+                    <>📄 Generate PDF Summary</>
+                  )}
+                </button>
+              </div>
             )}
 
             {/* Debug info - remove this later */}

@@ -30,7 +30,7 @@ function Login() {
 
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h2>Sign in to PromptDeck</h2>
+      <h2>Sign in to Power Presenter</h2>
       <div id="firebaseui-auth-container"></div>
     </div>
   );

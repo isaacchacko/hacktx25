@@ -11,7 +11,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "PromptDeck - Present Among the Stars",
+  title: "Power Presenter - Present Among the Stars",
   description: "Illuminate your presentations with real-time Q&A, cosmic AI summaries, and stellar audience engagement",
 };
 
