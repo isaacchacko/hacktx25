@@ -75,54 +75,86 @@ export default function Home() {
         opacity: 0.6
       }} />
 
-    {/* Shooting Stars */}
-    {[
-      { top: '10%', left: '-200px' },
-      { top: '30%', left: '-200px' },
-      { top: '60%', left: '-200px' },
-      { top: '80%', left: '-200px' },
-      { top: '-50px', left: '40%' },
-      { top: '-50px', left: '50%' },
-      { top: '-50px', left: '60%' },
-      { top: '-50px', left: '30%' },
-      { top: '-50px', left: '70%' }
-    ].map((pos, i) => (
-      <div
-        key={i}
-        style={{
-          position: 'absolute',
-          top: pos.top,
-          left: pos.left,
-          width: '150px',
-          height: '2px',
-          transform: 'rotate(-45deg)',
-          transformOrigin: 'center',
-          animation: `shootingStar ${4 + i * 1.5}s linear infinite`,
-          animationDelay: `${i * 2}s`,
-          pointerEvents: 'none',
-          display: 'flex',
-          alignItems: 'center'
-        }}
-      >
-        {/* Star head (circle) */}
-        <div style={{
-          width: '6px',
-          height: '6px',
-          borderRadius: '50%',
-          background: 'white',
-          boxShadow: '0 0 15px 3px rgba(255,255,255,0.8)',
-          position: 'absolute',
-          right: '0'
-        }} />
-        {/* Star tail (gradient line) */}
-        <div style={{
-          width: '100%',
-          height: '2px',
-          background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 100%)',
-          boxShadow: '0 0 10px 2px rgba(255,255,255,0.5)'
-        }} />
-      </div>
-    ))}
+      {/* Animated Gradient Overlay */}
+      <div style={{
+        position: 'absolute',
+        width: '200%',
+        height: '200%',
+        top: '-50%',
+        left: '-50%',
+        background: 'radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 50%)',
+        animation: 'rotateGradient 20s linear infinite',
+        pointerEvents: 'none'
+      }} />
+
+      {/* Shooting Stars */}
+      {[
+        { top: '10%', left: '-200px' },
+        { top: '30%', left: '-200px' },
+        { top: '60%', left: '-200px' },
+        { top: '80%', left: '-200px' },
+        { top: '-50px', left: '40%' },
+        { top: '-50px', left: '50%' },
+        { top: '-50px', left: '60%' },
+        { top: '-50px', left: '30%' },
+        { top: '-50px', left: '70%' }
+      ].map((pos, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            top: pos.top,
+            left: pos.left,
+            width: '150px',
+            height: '2px',
+            transform: 'rotate(-45deg)',
+            transformOrigin: 'center',
+            animation: `shootingStar ${4 + i * 1.5}s linear infinite`,
+            animationDelay: `${i * 2}s`,
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          {/* Star head (circle) */}
+          <div style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: 'white',
+            boxShadow: '0 0 15px 3px rgba(255,255,255,0.8)',
+            position: 'absolute',
+            right: '0'
+          }} />
+          {/* Star tail (gradient line) */}
+          <div style={{
+            width: '100%',
+            height: '2px',
+            background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 100%)',
+            boxShadow: '0 0 10px 2px rgba(255,255,255,0.5)'
+          }} />
+        </div>
+      ))}
+
+      {/* Floating Particles */}
+      {[...Array(25)].map((_, i) => (
+        <div
+          key={`particle-${i}`}
+          style={{
+            position: 'absolute',
+            width: `${Math.random() * 4 + 2}px`,
+            height: `${Math.random() * 4 + 2}px`,
+            background: 'rgba(255,255,255,0.6)',
+            borderRadius: '50%',
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animation: `float ${10 + Math.random() * 20}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 5}s`,
+            pointerEvents: 'none',
+            boxShadow: '0 0 10px rgba(255,255,255,0.5)'
+          }}
+        />
+      ))}
 
       {/* Content Container */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -149,7 +181,8 @@ export default function Home() {
               background: 'linear-gradient(to right, #fff, #e0c3fc, #fff)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
+              backgroundClip: 'text',
+              animation: 'titlePulse 3s ease-in-out infinite'
             }}>
               Present Among the Stars
             </h1>
@@ -311,7 +344,8 @@ export default function Home() {
                   <div style={{
                     fontSize: '48px',
                     marginBottom: '14px',
-                    filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.5))'
+                    filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.5))',
+                    animation: `floatIcon ${3 + index * 0.5}s ease-in-out infinite`
                   }}>
                     {feature.icon}
                   </div>
@@ -388,6 +422,42 @@ export default function Home() {
           75% {
             transform: translateY(-15px) translateX(5px);
           }
+        }
+        
+        @keyframes titlePulse {
+          0%, 100% {
+            text-shadow: 0 0 40px rgba(147, 112, 219, 0.8), 0 0 80px rgba(138, 43, 226, 0.4);
+            transform: scale(1);
+          }
+          50% {
+            text-shadow: 0 0 60px rgba(147, 112, 219, 1), 0 0 120px rgba(138, 43, 226, 0.6);
+            transform: scale(1.02);
+          }
+        }
+        
+        @keyframes floatIcon {
+          0%, 100% {
+            transform: translateY(0) rotate(0deg);
+          }
+          25% {
+            transform: translateY(-10px) rotate(5deg);
+          }
+          75% {
+            transform: translateY(-5px) rotate(-5deg);
+          }
+        }
+        
+        @keyframes rotateGradient {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+        
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>
