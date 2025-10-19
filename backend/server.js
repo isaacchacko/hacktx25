@@ -451,18 +451,33 @@ io.on("connection", (socket) => {
 
   // Handle posting a new question
   socket.on("post-question", (data) => {
+    console.log("🔍 Received post-question event:", data);
+    console.log("🔍 Socket userId:", socket.userId);
+    console.log("🔍 Socket userEmail:", socket.userEmail);
+    
+    // Check if user is authenticated
+    if (!socket.userId) {
+      console.log("❌ User not authenticated");
+      socket.emit("error", "User not authenticated");
+      return;
+    }
+    
     const { question, joinCode } = data;
     if (!question || !joinCode) {
+      console.log("❌ Missing question or joinCode");
       socket.emit("error", "Question and join code are required");
       return;
     }
 
     if (!rooms.has(joinCode)) {
+      console.log("❌ Room not found:", joinCode);
       socket.emit("error", "Room not found");
       return;
     }
 
     const room = rooms.get(joinCode);
+    console.log("🔍 Room found, current questions count:", room.questions.length);
+    
     const newQuestion = {
       id: uuidv4(),
       text: question.trim(),
@@ -476,10 +491,14 @@ io.on("connection", (socket) => {
       answered: false
     };
 
+    console.log("🔍 Created new question:", newQuestion);
     room.questions.push(newQuestion);
+    console.log("🔍 Added question to room, new count:", room.questions.length);
 
     // Broadcast new question to all members in the room
+    console.log("📤 Broadcasting new-question to room:", joinCode);
     io.to(joinCode).emit("new-question", newQuestion);
+    console.log("✅ Question broadcasted successfully");
   });
 
   // Handle voting on questions

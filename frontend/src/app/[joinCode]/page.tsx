@@ -167,7 +167,7 @@ export default function JoinRoomPage() {
   }, [socket, isConnected, joinCode, currentRoom]); // Removed user dependency
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !isConnected) return;
 
     // Set up event listeners
     const handleJoinedRoom = (data: any) => {
@@ -196,13 +196,17 @@ export default function JoinRoomPage() {
     };
 
     const handleError = (errorMessage: string) => {
-      console.error("Socket error:", errorMessage);
+      console.error("❌ Socket error:", errorMessage);
       setError(errorMessage);
     };
 
     const handleNewQuestion = (question: Question) => {
-      console.log("New question:", question);
-      setQuestions(prev => [...prev, question]);
+      console.log("📥 Received new-question event:", question);
+      setQuestions(prev => {
+        const updated = [...prev, question];
+        console.log("📥 Updated questions list:", updated);
+        return updated;
+      });
     };
 
     const handleQuestionUpdated = (question: Question) => {
@@ -271,15 +275,28 @@ export default function JoinRoomPage() {
       socket.off("room-pdf-update", handleRoomPdfUpdate);
       socket.off("pdf-page-updated", handlePdfPageUpdate);
     };
-  }, [socket]);
+  }, [socket, isConnected]);
 
   const postQuestion = () => {
-    if (socket && newQuestion.trim()) {
+    console.log("🔍 postQuestion called");
+    console.log("🔍 socket:", socket);
+    console.log("🔍 isConnected:", isConnected);
+    console.log("🔍 newQuestion:", newQuestion);
+    console.log("🔍 joinCode:", joinCode);
+    
+    if (socket && isConnected && newQuestion.trim()) {
+      console.log("📤 Emitting post-question event");
       socket.emit("post-question", {
         question: newQuestion.trim(),
         joinCode: joinCode
       });
       setNewQuestion("");
+      console.log("✅ Question text cleared from input");
+    } else {
+      console.log("❌ Cannot post question - missing socket, not connected, or empty question");
+      console.log("❌ Socket exists:", !!socket);
+      console.log("❌ Is connected:", isConnected);
+      console.log("❌ Has question text:", !!newQuestion.trim());
     }
   };
 
@@ -1319,7 +1336,7 @@ export default function JoinRoomPage() {
                 />
                 <button
                   onClick={postQuestion}
-                  disabled={!isConnected || !newQuestion.trim()}
+                  disabled={!socket || !isConnected || !newQuestion.trim()}
                   style={{
                     padding: '12px 24px',
                     background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
@@ -1328,19 +1345,19 @@ export default function JoinRoomPage() {
                     borderRadius: '12px',
                     fontSize: '16px',
                     fontWeight: '600',
-                    cursor: (!isConnected || !newQuestion.trim()) ? 'not-allowed' : 'pointer',
+                    cursor: (!socket || !isConnected || !newQuestion.trim()) ? 'not-allowed' : 'pointer',
                     transition: 'all 0.3s',
                     boxShadow: '0 4px 15px rgba(40, 167, 69, 0.4)',
-                    opacity: (!isConnected || !newQuestion.trim()) ? 0.5 : 1
+                    opacity: (!socket || !isConnected || !newQuestion.trim()) ? 0.5 : 1
                   }}
                   onMouseOver={(e) => {
-                    if (isConnected && newQuestion.trim()) {
+                    if (socket && isConnected && newQuestion.trim()) {
                       e.currentTarget.style.transform = 'translateY(-2px)';
                       e.currentTarget.style.boxShadow = '0 6px 20px rgba(40, 167, 69, 0.6)';
                     }
                   }}
                   onMouseOut={(e) => {
-                    if (isConnected && newQuestion.trim()) {
+                    if (socket && isConnected && newQuestion.trim()) {
                       e.currentTarget.style.transform = 'translateY(0)';
                       e.currentTarget.style.boxShadow = '0 4px 15px rgba(40, 167, 69, 0.4)';
                     }
