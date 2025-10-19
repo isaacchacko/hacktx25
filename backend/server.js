@@ -392,6 +392,9 @@ io.on("connection", (socket) => {
 
   // Handle joining a room
   socket.on("join-room", (joinCode) => {
+    console.log(`User ${socket.userId} (${socket.userEmail}) attempting to join room: ${joinCode}`);
+    console.log(`Available rooms:`, Array.from(rooms.keys()));
+    
     if (!joinCode) {
       socket.emit("error", "Join code is required");
       return;
@@ -399,6 +402,7 @@ io.on("connection", (socket) => {
 
     // Check if room exists
     if (!rooms.has(joinCode)) {
+      console.log(`Room ${joinCode} not found. Available rooms:`, Array.from(rooms.keys()));
       socket.emit("error", "Room not found");
       return;
     }
@@ -635,13 +639,16 @@ io.on("connection", (socket) => {
 
   // Handle disconnection
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    console.log("User disconnected:", socket.id, "userId:", socket.userId);
     
     // Remove user from all rooms
     socket.rooms.forEach(room => {
       if (room !== socket.id && rooms.has(room)) {
         const roomData = rooms.get(room);
-        roomData.members.delete(socket.id);
+        // Use socket.userId instead of socket.id for consistency
+        if (socket.userId) {
+          roomData.members.delete(socket.userId);
+        }
         
         // Clean up empty rooms
         if (roomData.members.size === 0) {
@@ -650,7 +657,7 @@ io.on("connection", (socket) => {
         } else {
           // Notify remaining members
           socket.to(room).emit("user-left", {
-            userId: socket.id,
+            userId: socket.userId || socket.id,
             memberCount: roomData.members.size,
             message: `User left room ${room}`
           });

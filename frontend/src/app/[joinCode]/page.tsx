@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import Navbar from "../../components/Navbar";
 import { VoiceRecordingControls } from "../../components/VoiceRecordingControls";
 import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
+import { generateMultipleSummaries, SummaryRequest } from "../../utils/geminiApi";
 
 // Dynamically import PDF components to prevent SSR issues
 const PDFViewer = dynamic(() => import("../../components/PDFViewer"), {
@@ -115,6 +116,9 @@ export default function JoinRoomPage() {
   // Share room link state
   const [showShareCopied, setShowShareCopied] = useState<boolean>(false);
   
+  // Summary generation state
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  
   // Debug logging for presenter current page changes
   useEffect(() => {
     console.log('📄 Presenter current page updated to:', presenterCurrentPage);
@@ -196,8 +200,16 @@ export default function JoinRoomPage() {
     };
 
     const handleError = (errorMessage: string) => {
-      console.error("❌ Socket error:", errorMessage);
-      setError(errorMessage);
+      console.error("Socket error:", errorMessage);
+      
+      // Provide more helpful error messages
+      if (errorMessage === "Room not found") {
+        setError("Room not found. Please check the room code or ask the presenter to create a new room.");
+      } else if (errorMessage === "Join code is required") {
+        setError("Please enter a valid room code.");
+      } else {
+        setError(errorMessage);
+      }
     };
 
     const handleNewQuestion = (question: Question) => {
@@ -337,6 +349,78 @@ export default function JoinRoomPage() {
       router.push('/login');
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  // Generate summary for all slides
+  const generateSummary = async () => {
+    setIsGeneratingSummary(true);
+    
+    try {
+      console.log('📝 Generating summary for all slides...');
+      
+      // Get all pages that have transcriptions
+      const pagesWithTranscriptions = Object.keys(transcriptionsByPage)
+        .map(Number)
+        .sort((a, b) => a - b);
+      
+      if (pagesWithTranscriptions.length === 0) {
+        console.log('📝 No transcriptions found for any slide');
+        console.log('📝 SUMMARY GENERATED:');
+        console.log('==================');
+        console.log('Slide 1: No transcriptions available for this presentation.');
+        console.log('==================');
+        return;
+      }
+      
+      // Prepare requests for Gemini API
+      const summaryRequests: SummaryRequest[] = [];
+      
+      for (const pageNumber of pagesWithTranscriptions) {
+        const pageData = transcriptionsByPage[pageNumber];
+        if (pageData && pageData.transcriptions.length > 0) {
+          // Combine all transcriptions for this page
+          const combinedText = pageData.transcriptions
+            .map(t => t.text)
+            .join(' ')
+            .trim();
+          
+          summaryRequests.push({
+            pageNumber,
+            transcriptionText: combinedText
+          });
+        } else {
+          summaryRequests.push({
+            pageNumber,
+            transcriptionText: ''
+          });
+        }
+      }
+      
+      // Generate summaries using Gemini API
+      console.log('🤖 Calling Gemini API for intelligent summarization...');
+      const summaries = await generateMultipleSummaries(summaryRequests);
+      
+      // Output to console
+      console.log('📝 SUMMARY GENERATED:');
+      console.log('==================');
+      summaries
+        .sort((a, b) => a.pageNumber - b.pageNumber)
+        .forEach(({ pageNumber, summary, success, error }) => {
+          if (success) {
+            console.log(`Slide ${pageNumber}: ${summary}`);
+          } else {
+            console.log(`Slide ${pageNumber}: Error - ${error}`);
+          }
+        });
+      console.log('==================');
+      
+      // TODO: In the future, this will also download as a file
+      
+    } catch (error) {
+      console.error('❌ Error generating summary:', error);
+    } finally {
+      setIsGeneratingSummary(false);
     }
   };
 
@@ -666,7 +750,29 @@ export default function JoinRoomPage() {
                   marginBottom: '16px',
                   backdropFilter: 'blur(10px)'
                 }}>
-                  Error: {error}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '18px' }}>⚠️</span>
+                    <strong>Error: {error}</strong>
+                  </div>
+                  {error.includes("Room not found") && (
+                    <div style={{ fontSize: '14px', marginTop: '8px', lineHeight: '1.4' }}>
+                      <p style={{ margin: '0 0 8px 0' }}>This could happen if:</p>
+                      <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                        <li>The room code is incorrect</li>
+                        <li>The room was created but the server restarted</li>
+                        <li>The presenter hasn't created the room yet</li>
+                      </ul>
+                      <div style={{ marginTop: '12px' }}>
+                        <Link href="/start-presenting" style={{
+                          color: '#ff6b6b',
+                          textDecoration: 'underline',
+                          fontWeight: '600'
+                        }}>
+                          Create a new room instead
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -952,6 +1058,113 @@ export default function JoinRoomPage() {
                 viewByPage={viewByPage}
                 onToggleView={() => setViewByPage(!viewByPage)}
               />
+            )}
+
+            {/* Summary Generation - For All Users */}
+            {(liveTranscription || transcriptionHistory.length > 0 || Object.keys(transcriptionsByPage).length > 0) && (
+              <div style={{
+                background: isPresenter
+                  ? 'linear-gradient(135deg, rgba(147, 112, 219, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)'
+                  : 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+                backdropFilter: 'blur(15px)',
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '24px',
+                border: isPresenter
+                  ? '2px solid rgba(147, 112, 219, 0.3)'
+                  : '2px solid rgba(102, 126, 234, 0.3)',
+                boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: 'white',
+                    margin: 0,
+                    textShadow: '0 2px 10px rgba(147, 112, 219, 0.6)'
+                  }}>
+                    📝 Slide Summaries
+                  </h3>
+                  <div style={{
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    background: isPresenter
+                      ? 'rgba(147, 112, 219, 0.2)'
+                      : 'rgba(102, 126, 234, 0.2)',
+                    color: 'white',
+                    border: isPresenter
+                      ? '1px solid rgba(147, 112, 219, 0.3)'
+                      : '1px solid rgba(102, 126, 234, 0.3)'
+                  }}>
+                    {Object.keys(transcriptionsByPage).length} slide{Object.keys(transcriptionsByPage).length !== 1 ? 's' : ''} with transcriptions
+                  </div>
+                </div>
+                
+                <p style={{
+                  fontSize: '14px',
+                  color: 'rgba(255,255,255,0.8)',
+                  margin: '0 0 16px 0',
+                  lineHeight: '1.5'
+                }}>
+                  Generate intelligent summaries for each slide based on the transcriptions. 
+                  Summaries will be output to the console and can be downloaded as a file.
+                </p>
+                
+                <button
+                  onClick={generateSummary}
+                  disabled={isGeneratingSummary}
+                  style={{
+                    padding: '12px 24px',
+                    background: isGeneratingSummary
+                      ? 'linear-gradient(135deg, #6c757d 0%, #5a6268 100%)'
+                      : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: isGeneratingSummary ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s',
+                    boxShadow: '0 4px 15px rgba(40, 167, 69, 0.4)',
+                    opacity: isGeneratingSummary ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isGeneratingSummary) {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(40, 167, 69, 0.6)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (!isGeneratingSummary) {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(40, 167, 69, 0.4)';
+                    }
+                  }}
+                >
+                  {isGeneratingSummary ? (
+                    <>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        borderTopColor: 'white',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      📥 Download Summary
+                    </>
+                  )}
+                </button>
+              </div>
             )}
 
             {/* Debug info - remove this later */}
