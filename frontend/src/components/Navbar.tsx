@@ -1,10 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../app/context/AuthContext";
 
 export default function Navbar() {
+  const router = useRouter();
   const { user, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <nav style={{
@@ -88,7 +99,7 @@ export default function Navbar() {
                 {user.displayName || user.email}
               </span>
               <button
-                onClick={signOut}
+                onClick={handleLogout}
                 style={{
                   padding: '10px 24px',
                   background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',

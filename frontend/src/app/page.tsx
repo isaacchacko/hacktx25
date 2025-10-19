@@ -1,10 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "./context/AuthContext";
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const router = useRouter();
+  const { user, loading, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -100,8 +111,9 @@ export default function Home() {
                 <span style={{ color: 'rgba(255,255,255,0.8)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
                   👤 {user.displayName || user.email}
                 </span>
-                <Link href="/login">
-                  <button style={{
+                <button 
+                  onClick={handleLogout}
+                  style={{
                     padding: '12px 24px',
                     background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
                     color: 'white',
@@ -121,10 +133,9 @@ export default function Home() {
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = '0 4px 15px rgba(220, 53, 69, 0.4)';
                   }}
-                  >
-                    Logout
-                  </button>
-                </Link>
+                >
+                  Logout
+                </button>
               </>
             ) : (
               <Link href="/login">
