@@ -108,11 +108,18 @@ export default function JoinRoomPage() {
   const [transcriptionsByPage, setTranscriptionsByPage] = useState<{ [pageNumber: number]: PageTranscription }>({});
   const [viewByPage, setViewByPage] = useState(false); // Toggle between views
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Fullscreen state for PDF viewer
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  
+  // Share room link state
+  const [showShareCopied, setShowShareCopied] = useState<boolean>(false);
   
   // Debug logging for presenter current page changes
   useEffect(() => {
     console.log('📄 Presenter current page updated to:', presenterCurrentPage);
   }, [presenterCurrentPage]);
+
 
   // Load PDF URL from localStorage on component mount
   useEffect(() => {
@@ -414,7 +421,93 @@ export default function JoinRoomPage() {
     setShowPdfViewer(!showPdfViewer);
   }, [showPdfViewer]);
 
+  const toggleFullscreen = useCallback(() => {
+    console.log('📄 Toggling fullscreen, current state:', isFullscreen);
+    setIsFullscreen(!isFullscreen);
+  }, [isFullscreen]);
+
+  const shareRoomLink = useCallback(async () => {
+    try {
+      const roomUrl = `${window.location.origin}/${joinCode}`;
+      await navigator.clipboard.writeText(roomUrl);
+      console.log('📋 Room link copied to clipboard:', roomUrl);
+      setShowShareCopied(true);
+      setTimeout(() => setShowShareCopied(false), 2000); // Hide after 2 seconds
+    } catch (error) {
+      console.error('Failed to copy room link:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = `${window.location.origin}/${joinCode}`;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setShowShareCopied(true);
+      setTimeout(() => setShowShareCopied(false), 2000);
+    }
+  }, [joinCode]);
+
+  // Handle keyboard navigation in fullscreen
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isFullscreen) return;
+      
+      switch (event.key) {
+        case 'Escape':
+          console.log('📄 Escape key pressed, exiting fullscreen');
+          setIsFullscreen(false);
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          if (currentPage > 1) {
+            console.log('📄 Left arrow pressed, going to previous page');
+            handlePageChange(currentPage - 1);
+          }
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          if (currentPage < totalPages) {
+            console.log('📄 Right arrow pressed, going to next page');
+            handlePageChange(currentPage + 1);
+          }
+          break;
+      }
+    };
+
+    if (isFullscreen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isFullscreen, currentPage, totalPages, handlePageChange]);
+
   // Remove authentication requirement - allow anonymous users
+
+  // Fullscreen PDF viewer layout - UI-free mode
+  if (isFullscreen && isPresenter && pdfUrl) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: '#000',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <PDFViewer
+          pdfUrl={pdfUrl}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
+          onPDFLoad={handleTotalPagesChange}
+          fitMode="page"
+          className="h-full w-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -465,15 +558,54 @@ export default function JoinRoomPage() {
               boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h1 style={{
-                  color: 'white',
-                  fontSize: '32px',
-                  fontWeight: 'bold',
-                  margin: 0,
-                  textShadow: '0 0 20px rgba(147, 112, 219, 0.8)'
-                }}>
-                  Room: {joinCode}
-                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <h1 style={{
+                    color: 'white',
+                    fontSize: '32px',
+                    fontWeight: 'bold',
+                    margin: 0,
+                    textShadow: '0 0 20px rgba(147, 112, 219, 0.8)'
+                  }}>
+                    Room: {joinCode}
+                  </h1>
+                  
+                  {/* Share Room Link Button */}
+                  <button
+                    onClick={shareRoomLink}
+                    style={{
+                      padding: '8px 16px',
+                      background: showShareCopied 
+                        ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
+                        : 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '20px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s',
+                      boxShadow: '0 4px 15px rgba(23, 162, 184, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!showShareCopied) {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(23, 162, 184, 0.6)';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!showShareCopied) {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(23, 162, 184, 0.4)';
+                      }
+                    }}
+                  >
+                    {showShareCopied ? '✅ Copied!' : '📋 Share Room Link'}
+                  </button>
+                </div>
+                
                 <div style={{
                   padding: '8px 16px',
                   borderRadius: '20px',
@@ -632,12 +764,43 @@ export default function JoinRoomPage() {
                         )}
                       </div>
                     )}
-
+                    
+                    {/* Fullscreen button - Only for presenters */}
+                    {isPresenter && showPdfViewer && (
+                      <button
+                        onClick={toggleFullscreen}
+                        style={{
+                          padding: '8px 16px',
+                          background: isFullscreen 
+                            ? 'linear-gradient(135deg, #ffc107 0%, #ff8c00 100%)'
+                            : 'linear-gradient(135deg, #6f42c1 0%, #8e44ad 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s',
+                          boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+                        }}
+                      >
+                        {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
+                      </button>
+                    )}
+                    
                     <button
                       onClick={togglePdfViewer}
                       style={{
                         padding: '8px 16px',
-                        background: showPdfViewer
+                        background: showPdfViewer 
                           ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
                           : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
                         color: 'white',
