@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useSocket } from "../../hooks/useSocket";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../../components/Navbar";
+import { VoiceRecordingControls } from "../../components/VoiceRecordingControls";
+import { TranscriptionDisplay } from "../../components/TranscriptionDisplay";
 
 interface Question {
   id: string;
@@ -30,6 +32,15 @@ export default function JoinRoomPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
+  
+  // Transcription state
+  const [liveTranscription, setLiveTranscription] = useState("");
+  const [transcriptionHistory, setTranscriptionHistory] = useState<Array<{
+    text: string;
+    confidence: number;
+    timestamp: number;
+  }>>([]);
+  const [isTranscriptionCollapsed, setIsTranscriptionCollapsed] = useState(false);
 
   useEffect(() => {
     if (socket && isConnected && currentRoom !== joinCode) {
@@ -75,12 +86,21 @@ export default function JoinRoomPage() {
       setQuestions(questionsList);
     };
 
+    const handleTranscriptionUpdate = (data: any) => {
+      console.log("Transcription update:", data);
+      if (data.joinCode === joinCode) {
+        setLiveTranscription(data.transcription);
+        setTranscriptionHistory(data.history);
+      }
+    };
+
     // Add event listeners
     socket.on("joined-room", handleJoinedRoom);
     socket.on("error", handleError);
     socket.on("new-question", handleNewQuestion);
     socket.on("question-updated", handleQuestionUpdated);
     socket.on("questions-list", handleQuestionsList);
+    socket.on("transcription-update", handleTranscriptionUpdate);
 
     // Cleanup
     return () => {
@@ -89,6 +109,7 @@ export default function JoinRoomPage() {
       socket.off("new-question", handleNewQuestion);
       socket.off("question-updated", handleQuestionUpdated);
       socket.off("questions-list", handleQuestionsList);
+      socket.off("transcription-update", handleTranscriptionUpdate);
     };
   }, [socket]);
 
@@ -139,6 +160,26 @@ export default function JoinRoomPage() {
       router.push('/login');
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  // Handle transcription updates from voice recording
+  const handleTranscriptionUpdate = (transcription: string, history: Array<{
+    text: string;
+    confidence: number;
+    timestamp: number;
+  }>) => {
+    console.log('Transcription update received:', { transcription, historyLength: history.length });
+    setLiveTranscription(transcription);
+    setTranscriptionHistory(history);
+    
+    // Broadcast transcription to other users in the room
+    if (socket && transcription) {
+      socket.emit('transcription-update', {
+        joinCode,
+        transcription,
+        history
+      });
     }
   };
 
@@ -336,6 +377,36 @@ export default function JoinRoomPage() {
                 </div>
               </div>
             </div>
+
+            {/* Voice Recording Controls - Only for Presenters */}
+            {isPresenter && (
+              <VoiceRecordingControls onTranscriptionUpdate={handleTranscriptionUpdate} />
+            )}
+
+            {/* Live Transcription Display - For All Users */}
+            {(liveTranscription || transcriptionHistory.length > 0) && (
+              <TranscriptionDisplay
+                transcription={liveTranscription}
+                transcriptionHistory={transcriptionHistory}
+                isTranscribing={false} // This will be managed by the VoiceRecordingControls
+                isCollapsed={isTranscriptionCollapsed}
+                onToggleCollapse={() => setIsTranscriptionCollapsed(!isTranscriptionCollapsed)}
+              />
+            )}
+
+            {/* Debug info - remove this later */}
+            {process.env.NODE_ENV === 'development' && (
+              <div style={{
+                background: 'rgba(0,0,0,0.3)',
+                padding: '10px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                fontSize: '12px',
+                color: 'white'
+              }}>
+                Debug: liveTranscription="{liveTranscription}", historyLength={transcriptionHistory.length}
+              </div>
+            )}
 
             {/* Questions */}
             <div style={{
