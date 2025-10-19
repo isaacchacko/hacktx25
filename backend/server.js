@@ -341,7 +341,10 @@ io.on("connection", (socket) => {
       createdAt: new Date(),
       questions: [],
       presenterId: socket.userId,
-      presenterEmail: socket.userEmail
+      presenterEmail: socket.userEmail,
+      liveTranscription: '',
+      transcriptionHistory: [],
+      transcriptionsByPage: {}
     });
 
     // Join the room
@@ -410,7 +413,10 @@ io.on("connection", (socket) => {
       pdfUrl: pdfUrl, // Store PDF URL in room data
       summary: summary || '', // Store PDF summary in room data
       pageTexts: pageTexts || [], // Store PDF page texts in room data
-      currentPage: 1 // Track current PDF page
+      currentPage: 1, // Track current PDF page
+      liveTranscription: '',
+      transcriptionHistory: [],
+      transcriptionsByPage: {}
     });
 
     // Join the room
@@ -519,6 +525,23 @@ io.on("connection", (socket) => {
     console.log(`Room ${joinCode} has PDF text:`, joinedRoomData.pdfText ? `Yes (${joinedRoomData.pdfText.length} chars)` : 'No');
     console.log(`Room ${joinCode} has total pages:`, joinedRoomData.totalPages > 0 ? `Yes (${joinedRoomData.totalPages} pages)` : 'No');
     socket.emit("joined-room", joinedRoomData);
+
+    // Send existing transcription data if available
+    if (room.liveTranscription || (room.transcriptionHistory && room.transcriptionHistory.length > 0)) {
+      socket.emit('transcription-update', {
+        joinCode,
+        transcription: room.liveTranscription || '',
+        history: room.transcriptionHistory || [],
+        currentPage: room.currentPage || 1,
+        transcriptionsByPage: room.transcriptionsByPage || {}
+      });
+      console.log('📝 Sent existing transcription to newly joined user:', {
+        joinCode,
+        transcriptionLength: room.liveTranscription?.length || 0,
+        historyCount: room.transcriptionHistory?.length || 0,
+        transcriptionsByPageKeys: room.transcriptionsByPage ? Object.keys(room.transcriptionsByPage).length : 0
+      });
+    }
 
     // Notify other members in the room
     socket.to(joinCode).emit("user-joined", {
@@ -681,6 +704,47 @@ io.on("connection", (socket) => {
 
     // Broadcast updated question to all members in the room
     io.to(joinCode).emit("question-updated", question);
+  });
+
+  // Handle transcription updates from presenter
+  socket.on('transcription-update', (data) => {
+    console.log('📝 Transcription update received:', {
+      joinCode: data.joinCode,
+      transcriptionLength: data.transcription?.length || 0,
+      historyCount: data.history?.length || 0,
+      currentPage: data.currentPage,
+      transcriptionsByPageKeys: data.transcriptionsByPage ? Object.keys(data.transcriptionsByPage).length : 0
+    });
+    
+    if (!data.joinCode) {
+      console.log('❌ Transcription update missing joinCode');
+      socket.emit("error", "Join code is required");
+      return;
+    }
+
+    if (!rooms.has(data.joinCode)) {
+      console.log('❌ Room not found for transcription update:', data.joinCode);
+      socket.emit("error", "Room not found");
+      return;
+    }
+    
+    const room = rooms.get(data.joinCode);
+    
+    // Store the latest transcription in the room
+    room.liveTranscription = data.transcription || '';
+    room.transcriptionHistory = data.history || [];
+    room.transcriptionsByPage = data.transcriptionsByPage || {};
+    
+    // Broadcast to all users in the room (including the presenter)
+    io.to(data.joinCode).emit('transcription-update', {
+      joinCode: data.joinCode,
+      transcription: data.transcription || '',
+      history: data.history || [],
+      currentPage: data.currentPage,
+      transcriptionsByPage: data.transcriptionsByPage || {}
+    });
+    
+    console.log('✅ Broadcasted transcription update to room:', data.joinCode, `(${room.members.size} members)`);
   });
 
   // Handle PDF page changes (presenter only)

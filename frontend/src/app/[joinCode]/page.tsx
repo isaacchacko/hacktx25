@@ -435,11 +435,24 @@ export default function JoinRoomPage() {
       }
     };
 
-    const handleTranscriptionUpdate = (data: any) => {
-      console.log("Transcription update:", data);
+    const handleSocketTranscriptionUpdate = (data: any) => {
+      console.log("📝 Transcription update from socket:", {
+        joinCode: data.joinCode,
+        transcriptionLength: data.transcription?.length || 0,
+        historyCount: data.history?.length || 0,
+        transcriptionsByPageKeys: data.transcriptionsByPage ? Object.keys(data.transcriptionsByPage).length : 0
+      });
+      
       if (data.joinCode === joinCode) {
-        setLiveTranscription(data.transcription);
-        setTranscriptionHistory(data.history);
+        // Update all transcription state
+        setLiveTranscription(data.transcription || '');
+        setTranscriptionHistory(data.history || []);
+        
+        // IMPORTANT: Also update transcriptionsByPage for summary generation
+        if (data.transcriptionsByPage) {
+          setTranscriptionsByPage(data.transcriptionsByPage);
+          console.log('✅ Updated transcriptionsByPage from socket:', Object.keys(data.transcriptionsByPage));
+        }
       }
     };
 
@@ -483,7 +496,7 @@ export default function JoinRoomPage() {
     socket.on("new-question", handleNewQuestion);
     socket.on("question-updated", handleQuestionUpdated);
     socket.on("questions-list", handleQuestionsList);
-    socket.on("transcription-update", handleTranscriptionUpdate);
+    socket.on("transcription-update", handleSocketTranscriptionUpdate);
     socket.on("room-pdf-update", handleRoomPdfUpdate);
     socket.on("pdf-page-updated", handlePdfPageUpdate);
     socket.on("ai-insights", handleAIInsights);
@@ -495,7 +508,7 @@ export default function JoinRoomPage() {
       socket.off("new-question", handleNewQuestion);
       socket.off("question-updated", handleQuestionUpdated);
       socket.off("questions-list", handleQuestionsList);
-      socket.off("transcription-update", handleTranscriptionUpdate);
+      socket.off("transcription-update", handleSocketTranscriptionUpdate);
       socket.off("room-pdf-update", handleRoomPdfUpdate);
       socket.off("pdf-page-updated", handlePdfPageUpdate);
       socket.off("ai-insights", handleAIInsights);
