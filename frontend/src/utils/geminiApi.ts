@@ -111,3 +111,96 @@ export async function generateMultipleSummaries(
   return results;
 }
 
+export interface PDFSummaryRequest {
+  pdfText: string;
+  fileName?: string;
+}
+
+export interface PDFSummaryResponse {
+  summary: string;
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Generate a comprehensive summary of a PDF document using Gemini API
+ */
+export async function generatePDFSummary(
+  pdfText: string,
+  fileName?: string
+): Promise<PDFSummaryResponse> {
+  try {
+    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+      throw new Error('Gemini API key not found. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.');
+    }
+
+    console.log('🔑 Gemini API key found for PDF summarization');
+    console.log('📄 PDF text length:', pdfText.length);
+
+    if (!pdfText || pdfText.trim() === '') {
+      return {
+        summary: 'No text content found in the PDF document.',
+        success: true
+      };
+    }
+
+    // Try different Gemini models
+    let model;
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-pro-latest'];
+    
+    for (const modelName of modelsToTry) {
+      try {
+        model = genAI.getGenerativeModel({ model: modelName });
+        console.log(`✅ Using model for PDF summary: ${modelName}`);
+        break;
+      } catch (modelError) {
+        console.log(`❌ ${modelName} not available for PDF summary, trying next...`);
+      }
+    }
+    
+    if (!model) {
+      throw new Error('No available Gemini models found for PDF summarization');
+    }
+
+    const prompt = `Please create a comprehensive, well-structured summary of the following PDF document. 
+    The summary should be informative and useful for presentation participants to understand the document's content.
+    
+    Guidelines:
+    - Provide a clear overview of the main topics and themes
+    - Highlight key points, findings, or conclusions
+    - Maintain a professional tone
+    - Keep it concise but comprehensive (aim for 2-4 paragraphs)
+    - If the document appears to be a presentation, note the main sections or slides
+    - If it's a report or document, summarize the main findings and recommendations
+    
+    ${fileName ? `Document: ${fileName}` : 'PDF Document'}
+    
+    Content:
+    "${pdfText.substring(0, 8000)}"${pdfText.length > 8000 ? '\n\n[Content truncated for API limits]' : ''}
+    
+    Summary:`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const summary = response.text().trim();
+
+    return {
+      summary: summary || 'Unable to generate summary from the PDF content.',
+      success: true
+    };
+  } catch (error) {
+    console.error('Error generating PDF summary:', error);
+    
+    // If API fails, provide a basic summary as fallback
+    const fallbackSummary = pdfText.length > 500 
+      ? `Document Summary (Basic): ${pdfText.substring(0, 500)}...`
+      : `Document Summary (Basic): ${pdfText}`;
+    
+    return {
+      summary: `[Fallback] ${fallbackSummary}`,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error during PDF summarization'
+    };
+  }
+}
+

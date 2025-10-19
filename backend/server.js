@@ -337,7 +337,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const { pdfUrl } = data;
+    const { pdfUrl, summary, pageTexts } = data;
     if (!pdfUrl) {
       socket.emit("error", "PDF URL is required");
       return;
@@ -353,6 +353,8 @@ io.on("connection", (socket) => {
       presenterId: socket.userId,
       presenterEmail: socket.userEmail,
       pdfUrl: pdfUrl, // Store PDF URL in room data
+      summary: summary || '', // Store PDF summary in room data
+      pageTexts: pageTexts || [], // Store PDF page texts in room data
       currentPage: 1 // Track current PDF page
     });
 
@@ -368,13 +370,17 @@ io.on("connection", (socket) => {
     }
     
     console.log(`Room ${joinCode} created by presenter ${socket.userEmail} (${socket.userId}) with PDF: ${pdfUrl}`);
+    console.log(`Room ${joinCode} summary: ${summary ? 'Provided' : 'Not provided'}`);
+    console.log(`Room ${joinCode} page texts: ${pageTexts ? `Provided (${pageTexts.length} pages)` : 'Not provided'}`);
     console.log(`Room ${joinCode} now has ${room.members.size} members`);
     
     // Notify the creator
     socket.emit("room-created", {
       joinCode,
       message: `Room ${joinCode} created successfully with PDF`,
-      pdfUrl: pdfUrl
+      pdfUrl: pdfUrl,
+      summary: summary || '',
+      pageTexts: pageTexts || []
     });
 
     // Also send joined-room event to set presenter status
@@ -384,9 +390,11 @@ io.on("connection", (socket) => {
       message: `Successfully joined room ${joinCode}`,
       isPresenter: true,
       pdfUrl: pdfUrl,
+      summary: summary || '',
+      pageTexts: pageTexts || [],
       currentPage: room.currentPage || 1
     };
-    console.log('Sending joined-room event with isPresenter and PDF URL:', joinedRoomData);
+    console.log('Sending joined-room event with isPresenter, PDF URL, summary, and page texts:', joinedRoomData);
     socket.emit("joined-room", joinedRoomData);
   });
 
@@ -437,11 +445,15 @@ io.on("connection", (socket) => {
       message: `Successfully joined room ${joinCode}`,
       isPresenter: room.presenterId === socket.userId,
       pdfUrl: room.pdfUrl || null, // Include PDF URL if room has one
+      summary: room.summary || '', // Include PDF summary if room has one
+      pageTexts: room.pageTexts || [], // Include PDF page texts if room has them
       currentPage: room.currentPage || 1 // Include current PDF page
     };
     console.log(`Room ${joinCode} presenterId:`, room.presenterId);
     console.log(`User ${socket.userId} isPresenter:`, joinedRoomData.isPresenter);
     console.log(`Room ${joinCode} has PDF URL:`, joinedRoomData.pdfUrl);
+    console.log(`Room ${joinCode} has summary:`, joinedRoomData.summary ? 'Yes' : 'No');
+    console.log(`Room ${joinCode} has page texts:`, joinedRoomData.pageTexts.length > 0 ? `Yes (${joinedRoomData.pageTexts.length} pages)` : 'No');
     socket.emit("joined-room", joinedRoomData);
 
     // Notify other members in the room

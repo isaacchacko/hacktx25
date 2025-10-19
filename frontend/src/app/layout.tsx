@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./context/AuthContext";
+import ClientPolyfills from "../components/ClientPolyfills";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -25,6 +26,7 @@ export default function RootLayout({
         className={`${manrope.variable} antialiased`}
         suppressHydrationWarning={true}
       >
+        <ClientPolyfills />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

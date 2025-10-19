@@ -82,7 +82,7 @@ export default function JoinRoomPage() {
   const { user, signOut } = useAuth();
   const { socket, isConnected, isPresenter, isAnonymous, joinRoom, currentRoom } = useSocket();
 
-  
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export default function JoinRoomPage() {
     timestamp: number;
   }>>([]);
   const [isTranscriptionCollapsed, setIsTranscriptionCollapsed] = useState(false);
-    // Timer states - ADD THIS
+  // Timer states - ADD THIS
   const [estimatedTime, setEstimatedTime] = useState<number>(0);
   const [slideTimings, setSlideTimings] = useState<number[]>([]);
   const formatTime = (seconds: number): string => {
@@ -126,13 +126,13 @@ export default function JoinRoomPage() {
 
   // Fullscreen state for PDF viewer
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  
+
   // Share room link state
   const [showShareCopied, setShowShareCopied] = useState<boolean>(false);
-  
+
   // Summary generation state
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  
+
   // Debug logging for presenter current page changes
   useEffect(() => {
     console.log('📄 Presenter current page updated to:', presenterCurrentPage);
@@ -155,7 +155,7 @@ export default function JoinRoomPage() {
     } else {
       console.log('❌ No PDF URL found in localStorage');
     }
-    
+
     // Initialize page 1 for transcriptions
     if (!isInitialized) {
       setTranscriptionsByPage({
@@ -215,7 +215,7 @@ export default function JoinRoomPage() {
 
     const handleError = (errorMessage: string) => {
       console.error("Socket error:", errorMessage);
-      
+
       // Provide more helpful error messages
       if (errorMessage === "Room not found") {
         setError("Room not found. Please check the room code or ask the presenter to create a new room.");
@@ -309,7 +309,7 @@ export default function JoinRoomPage() {
     console.log("🔍 isConnected:", isConnected);
     console.log("🔍 newQuestion:", newQuestion);
     console.log("🔍 joinCode:", joinCode);
-    
+
     if (socket && isConnected && newQuestion.trim()) {
       console.log("📤 Emitting post-question event");
       socket.emit("post-question", {
@@ -369,15 +369,15 @@ export default function JoinRoomPage() {
   // Generate summary for all slides
   const generateSummary = async () => {
     setIsGeneratingSummary(true);
-    
+
     try {
       console.log('📝 Generating summary for all slides...');
-      
+
       // Get all pages that have transcriptions
       const pagesWithTranscriptions = Object.keys(transcriptionsByPage)
         .map(Number)
         .sort((a, b) => a - b);
-      
+
       if (pagesWithTranscriptions.length === 0) {
         console.log('📝 No transcriptions found for any slide');
         console.log('📝 SUMMARY GENERATED:');
@@ -386,10 +386,10 @@ export default function JoinRoomPage() {
         console.log('==================');
         return;
       }
-      
+
       // Prepare requests for Gemini API
       const summaryRequests: SummaryRequest[] = [];
-      
+
       for (const pageNumber of pagesWithTranscriptions) {
         const pageData = transcriptionsByPage[pageNumber];
         if (pageData && pageData.transcriptions.length > 0) {
@@ -398,7 +398,7 @@ export default function JoinRoomPage() {
             .map(t => t.text)
             .join(' ')
             .trim();
-          
+
           summaryRequests.push({
             pageNumber,
             transcriptionText: combinedText
@@ -410,11 +410,11 @@ export default function JoinRoomPage() {
           });
         }
       }
-      
+
       // Generate summaries using Gemini API
       console.log('🤖 Calling Gemini API for intelligent summarization...');
       const summaries = await generateMultipleSummaries(summaryRequests);
-      
+
       // Output to console
       console.log('📝 SUMMARY GENERATED:');
       console.log('==================');
@@ -428,9 +428,9 @@ export default function JoinRoomPage() {
           }
         });
       console.log('==================');
-      
+
       // TODO: In the future, this will also download as a file
-      
+
     } catch (error) {
       console.error('❌ Error generating summary:', error);
     } finally {
@@ -448,7 +448,7 @@ export default function JoinRoomPage() {
     setLiveTranscription(transcription);
     setTranscriptionHistory(history);
 
-    
+
     // Add new transcriptions to current page
     if (history.length > 0) {
       // Get all existing transcriptions across all pages to avoid duplicates
@@ -456,10 +456,10 @@ export default function JoinRoomPage() {
       Object.values(transcriptionsByPage).forEach(pageData => {
         pageData.transcriptions.forEach(t => allExistingTimestamps.add(t.timestamp));
       });
-      
+
       // Filter out transcriptions that already exist in any page
       const newTranscriptions = history.filter(t => !allExistingTimestamps.has(t.timestamp));
-      
+
       if (newTranscriptions.length > 0) {
         setTranscriptionsByPage(prev => ({
           ...prev,
@@ -472,7 +472,7 @@ export default function JoinRoomPage() {
         }));
       }
     }
-    
+
     // Broadcast transcription to other users in the room
     if (socket && transcription) {
       socket.emit('transcription-update', {
@@ -488,7 +488,7 @@ export default function JoinRoomPage() {
   // PDF-related handlers
   const handlePageChange = useCallback((page: number) => {
     console.log('📄 Page changed to:', page);
-    
+
     // Finalize previous page's transcription
     if (currentPage !== page && transcriptionsByPage[currentPage]) {
       setTranscriptionsByPage(prev => ({
@@ -499,7 +499,7 @@ export default function JoinRoomPage() {
         }
       }));
     }
-    
+
     setCurrentPage(page);
     // Initialize new page transcription if it doesn't exist
     setTranscriptionsByPage(prev => ({
@@ -510,7 +510,7 @@ export default function JoinRoomPage() {
         startTime: Date.now()
       }
     }));
-    
+
     // If user is presenter, emit page change to socket server
     if (isPresenter && socket) {
       console.log('📄 Presenter changing page to:', page, 'emitting to socket server');
@@ -566,7 +566,7 @@ export default function JoinRoomPage() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isFullscreen) return;
-      
+
       switch (event.key) {
         case 'Escape':
           console.log('📄 Escape key pressed, exiting fullscreen');
@@ -683,13 +683,13 @@ export default function JoinRoomPage() {
                   }}>
                     Room: {joinCode}
                   </h1>
-                  
+
                   {/* Share Room Link Button */}
                   <button
                     onClick={shareRoomLink}
                     style={{
                       padding: '8px 16px',
-                      background: showShareCopied 
+                      background: showShareCopied
                         ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
                         : 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)',
                       color: 'white',
@@ -720,7 +720,7 @@ export default function JoinRoomPage() {
                     {showShareCopied ? '✅ Copied!' : '📋 Share Room Link'}
                   </button>
                 </div>
-                
+
                 <div style={{
                   padding: '8px 16px',
                   borderRadius: '20px',
@@ -901,14 +901,14 @@ export default function JoinRoomPage() {
                         )}
                       </div>
                     )}
-                    
+
                     {/* Fullscreen button - Only for presenters */}
                     {isPresenter && showPdfViewer && (
                       <button
                         onClick={toggleFullscreen}
                         style={{
                           padding: '8px 16px',
-                          background: isFullscreen 
+                          background: isFullscreen
                             ? 'linear-gradient(135deg, #ffc107 0%, #ff8c00 100%)'
                             : 'linear-gradient(135deg, #6f42c1 0%, #8e44ad 100%)',
                           color: 'white',
@@ -932,52 +932,52 @@ export default function JoinRoomPage() {
                         {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
                       </button>
                     )}
-                    
 
-              {/* PDF Viewer Section */}
-              {pdfUrl && (
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
-                  backdropFilter: 'blur(15px)',
-                  borderRadius: '16px',
-                  padding: '20px',
-                  marginBottom: '24px',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
-                }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '12px',
-                        color: 'white'
+
+                    {/* PDF Viewer Section */}
+                    {pdfUrl && (
+                      <div style={{
+                        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+                        backdropFilter: 'blur(15px)',
+                        borderRadius: '16px',
+                        padding: '20px',
+                        marginBottom: '24px',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        boxShadow: '0 6px 24px rgba(0,0,0,0.3)'
                       }}>
-                        <span style={{ fontSize: '28px' }}>⏱️</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ 
-                            fontSize: '18px', 
-                            fontWeight: '700',
-                            textShadow: '0 2px 10px rgba(147, 112, 219, 0.8)',
-                            marginBottom: '4px'
-                          }}>
-                            Estimated Time Remaining: {formatTime(estimatedTime)}
-                          </div>
-                          <div style={{ 
-                            fontSize: '13px', 
-                            color: 'rgba(255,255,255,0.8)',
-                            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-                          }}>
-                            Based on your presentation pace • Slide {currentPage} of {totalPages}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          color: 'white'
+                        }}>
+                          <span style={{ fontSize: '28px' }}>⏱️</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{
+                              fontSize: '18px',
+                              fontWeight: '700',
+                              textShadow: '0 2px 10px rgba(147, 112, 219, 0.8)',
+                              marginBottom: '4px'
+                            }}>
+                              Estimated Time Remaining: {formatTime(estimatedTime)}
+                            </div>
+                            <div style={{
+                              fontSize: '13px',
+                              color: 'rgba(255,255,255,0.8)',
+                              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                            }}>
+                              Based on your presentation pace • Slide {currentPage} of {totalPages}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                     <button
                       onClick={togglePdfViewer}
                       style={{
                         padding: '8px 16px',
-                        background: showPdfViewer 
+                        background: showPdfViewer
                           ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
                           : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
                         color: 'white',
@@ -1092,15 +1092,6 @@ export default function JoinRoomPage() {
                 </div>
               </div>
             </div>
-            <PDFViewer
-            pdfUrl={pdfUrl}
-            currentPage={currentPage}
-            onPageChange={handlePageChange}
-            onPDFLoad={handleTotalPagesChange}
-            onTimeUpdate={handleTimeUpdate}  // ADD THIS LINE
-            fitMode={fitMode}
-            className="h-full"
-          />
 
             {/* Voice Recording Controls - Only for Presenters */}
             {isPresenter && (
@@ -1164,17 +1155,17 @@ export default function JoinRoomPage() {
                     {Object.keys(transcriptionsByPage).length} slide{Object.keys(transcriptionsByPage).length !== 1 ? 's' : ''} with transcriptions
                   </div>
                 </div>
-                
+
                 <p style={{
                   fontSize: '14px',
                   color: 'rgba(255,255,255,0.8)',
                   margin: '0 0 16px 0',
                   lineHeight: '1.5'
                 }}>
-                  Generate intelligent summaries for each slide based on the transcriptions. 
+                  Generate intelligent summaries for each slide based on the transcriptions.
                   Summaries will be output to the console and can be downloaded as a file.
                 </p>
-                
+
                 <button
                   onClick={generateSummary}
                   disabled={isGeneratingSummary}

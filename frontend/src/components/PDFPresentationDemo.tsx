@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { storage, db, auth } from '../app/lib/firebase';
 import { useSocket } from '../hooks/useSocket';
+import { generatePDFSummary } from '../utils/geminiApi';
 
 // Dynamically import PresentationViewer to prevent SSR issues
 const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
@@ -39,6 +40,7 @@ const PresentationViewer = dynamic(() => import('./PresentationViewer'), {
 const PDFPresentationDemo: React.FC = () => {
   const router = useRouter();
   const { socket, isConnected, createRoom, createRoomWithPdf, currentRoom, isAnonymous } = useSocket();
+  const [isClient, setIsClient] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -46,11 +48,21 @@ const PDFPresentationDemo: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isCreatingRoom, setIsCreatingRoom] = useState<boolean>(false);
+  const [isSummarizing, setIsSummarizing] = useState<boolean>(false);
+  const [isExtractingText, setIsExtractingText] = useState<boolean>(false);
+  const [textExtractionProgress, setTextExtractionProgress] = useState<number>(0);
+  const [summary, setSummary] = useState<string>('');
+  const [pageTexts, setPageTexts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Timer states
   const [estimatedTime, setEstimatedTime] = useState<number>(0);
   const [slideTimings, setSlideTimings] = useState<number[]>([]);
+
+  // Set client-side flag
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Listen for room creation and navigate
   useEffect(() => {
@@ -115,7 +127,7 @@ const PDFPresentationDemo: React.FC = () => {
       setIsCreatingRoom(true);
       setError(null);
       setUploadProgress(0);
-      
+
       let finalPdfUrl = pdfUrl;
       let fileName = 'External PDF';
       let fileSize = 0;
@@ -126,7 +138,7 @@ const PDFPresentationDemo: React.FC = () => {
           fileSize: pdfFile.size,
           fileType: pdfFile.type
         });
-        
+
         fileName = pdfFile.name;
         fileSize = pdfFile.size;
 
@@ -165,22 +177,138 @@ const PDFPresentationDemo: React.FC = () => {
 
       console.log('✅ Presentation saved to Firestore with ID:', presentationDoc.id);
 
+      // Extract text from PDF first
+      console.log('📄 Starting PDF text extraction...');
+      setIsExtractingText(true);
+      setTextExtractionProgress(0);
+      setError(null);
+
+      let pdfSummary = '';
+      let extractedPageTexts: string[] = [];
+      try {
+        // Dynamically import PDF text extraction functions
+        const { extractTextFromPDF, extractTextFromPDFFile } = await import('../utils/pdfTextExtractor');
+        
+        // Extract text from PDF with progress tracking
+        const textExtraction = pdfFile
+          ? await extractTextFromPDFFile(pdfFile, {
+              onProgress: (progress, currentPage, totalPages) => {
+                setTextExtractionProgress(progress);
+                console.log(`📄 Text extraction progress: ${progress}% (page ${currentPage}/${totalPages})`);
+              }
+            })
+          : await extractTextFromPDF(finalPdfUrl, {
+              onProgress: (progress, currentPage, totalPages) => {
+                setTextExtractionProgress(progress);
+                console.log(`📄 Text extraction progress: ${progress}% (page ${currentPage}/${totalPages})`);
+              }
+            });
+
+        if (textExtraction.success && textExtraction.text) {
+          console.log('📄 PDF text extracted, length:', textExtraction.text.length);
+          console.log('📄 PDF page texts extracted, pages:', textExtraction.pageTexts.length);
+          setTextExtractionProgress(100);
+
+          // Store page texts
+          extractedPageTexts = textExtraction.pageTexts;
+          setPageTexts(extractedPageTexts);
+
+          // Generate summary using Gemini
+          console.log('🤖 Starting PDF summarization...');
+          setIsExtractingText(false);
+          setIsSummarizing(true);
+          
+          const summaryResult = await generatePDFSummary(textExtraction.text, fileName);
+          if (summaryResult.success) {
+            pdfSummary = summaryResult.summary;
+            setSummary(pdfSummary);
+            console.log('✅ PDF summary generated successfully');
+          } else {
+            console.warn('⚠️ PDF summary generation failed:', summaryResult.error);
+            pdfSummary = summaryResult.summary; // Use fallback summary
+          }
+        } else {
+          console.warn('⚠️ PDF text extraction failed:', textExtraction.error);
+          pdfSummary = 'Unable to extract text from PDF for summarization.';
+          extractedPageTexts = textExtraction.pageTexts || [];
+          setTextExtractionProgress(0);
+        }
+      } catch (summaryError) {
+        console.error('❌ Error during PDF processing:', summaryError);
+        pdfSummary = 'Error generating PDF summary.';
+        extractedPageTexts = [];
+        setTextExtractionProgress(0);
+      } finally {
+        setIsExtractingText(false);
+        setIsSummarizing(false);
+      }
+
+      // Store in localStorage for room access (including summary and page texts)
       localStorage.setItem('presentation-id', presentationDoc.id);
       localStorage.setItem('presentation-pdf-url', finalPdfUrl);
-      console.log('💾 Stored presentation data in localStorage');
+      localStorage.setItem('presentation-summary', pdfSummary);
+      localStorage.setItem('presentation-page-texts', JSON.stringify(extractedPageTexts));
+      console.log('💾 Stored presentation data in localStorage including summary and page texts');
 
-      console.log('🏠 Creating room with PDF URL:', finalPdfUrl);
-      createRoomWithPdf(finalPdfUrl);
+      // Create room using socket with PDF URL, summary, and page texts
+      console.log('🏠 Creating room with PDF URL, summary, and page texts:', finalPdfUrl);
+      createRoomWithPdf(finalPdfUrl, pdfSummary, extractedPageTexts);
 
     } catch (error) {
       console.error('❌ Error creating presentation:', error);
       setError('Failed to create presentation. Please try again.');
       setIsCreatingRoom(false);
+      setIsSummarizing(false);
+      setIsExtractingText(false);
+      setTextExtractionProgress(0);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
     }
   };
+
+  // Show loading state during SSR
+  if (!isClient) {
+    return (
+      <div style={{ padding: '24px', maxWidth: '100%', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            padding: '80px 40px',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            border: '1px solid rgba(255,255,255,0.2)'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '24px',
+              filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.5))'
+            }}>
+              ⏳
+            </div>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '600',
+              color: 'white',
+              marginBottom: '12px',
+              textShadow: '0 0 20px rgba(147, 112, 219, 0.8)'
+            }}>
+              Loading PDF Uploader
+            </h2>
+            <p style={{
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: '16px',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+            }}>
+              Preparing stellar PDF processing capabilities...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '24px', maxWidth: '100%', margin: '0 auto' }}>
@@ -207,24 +335,24 @@ const PDFPresentationDemo: React.FC = () => {
             border: '1px solid rgba(255,255,255,0.3)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
           }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
               gap: '16px',
               color: 'white'
             }}>
               <span style={{ fontSize: '32px' }}>⏱️</span>
               <div style={{ flex: 1 }}>
-                <div style={{ 
-                  fontSize: '20px', 
+                <div style={{
+                  fontSize: '20px',
                   fontWeight: '700',
                   textShadow: '0 2px 10px rgba(147, 112, 219, 0.8)',
                   marginBottom: '4px'
                 }}>
                   Estimated Total Time: {formatTime(estimatedTime)}
                 </div>
-                <div style={{ 
-                  fontSize: '14px', 
+                <div style={{
+                  fontSize: '14px',
                   color: 'rgba(255,255,255,0.8)',
                   textShadow: '0 2px 4px rgba(0,0,0,0.5)'
                 }}>
@@ -344,6 +472,101 @@ const PDFPresentationDemo: React.FC = () => {
             </div>
           )}
 
+          {/* Processing Status Display */}
+          {(isExtractingText || isSummarizing) && (
+            <div style={{
+              marginTop: '16px',
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
+              border: '2px solid rgba(34, 197, 94, 0.4)',
+              borderRadius: '12px',
+              backdropFilter: 'blur(10px)',
+              padding: '16px 20px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '12px'
+              }}>
+                <div style={{
+                  fontSize: '20px',
+                  animation: isExtractingText || isSummarizing ? 'pulse 1.5s ease-in-out infinite' : 'none'
+                }}>
+                  {isExtractingText ? '📄' : '🤖'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: 'rgba(255,255,255,0.9)',
+                    marginBottom: '4px',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                  }}>
+                    {isExtractingText ? 'Extracting PDF Text' : 'Gemini AI Processing'}
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.8)',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                  }}>
+                    {isExtractingText 
+                      ? `Processing ${totalPages} pages... ${Math.round(textExtractionProgress)}% complete`
+                      : 'Analyzing content and generating summary...'
+                    }
+                  </p>
+                </div>
+              </div>
+              {isExtractingText && (
+                <div style={{
+                  width: '100%',
+                  height: '6px',
+                  background: 'rgba(255,255,255,0.2)',
+                  borderRadius: '3px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${textExtractionProgress}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #22c55e 0%, #3b82f6 100%)',
+                    borderRadius: '3px',
+                    transition: 'width 0.3s ease'
+                  }} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PDF Summary Display */}
+          {summary && (
+            <div style={{
+              marginTop: '16px',
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)',
+              border: '2px solid rgba(59, 130, 246, 0.4)',
+              borderRadius: '12px',
+              backdropFilter: 'blur(10px)',
+              padding: '16px 20px'
+            }}>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'rgba(255,255,255,0.9)',
+                marginBottom: '12px',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+              }}>
+                🤖 AI Summary
+              </h3>
+              <p style={{
+                fontSize: '14px',
+                color: 'rgba(255,255,255,0.8)',
+                lineHeight: '1.6',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                whiteSpace: 'pre-wrap'
+              }}>
+                {summary}
+              </p>
+            </div>
+          )}
+
           {/* Error Display */}
           {error && (
             <div style={{
@@ -364,11 +587,11 @@ const PDFPresentationDemo: React.FC = () => {
           <div style={{ marginTop: '24px' }}>
             <button
               onClick={handleCreatePresentation}
-              disabled={!pdfUrl || isUploading || isCreatingRoom || !isConnected || isAnonymous}
+              disabled={!pdfUrl || isUploading || isCreatingRoom || isSummarizing || isExtractingText || !isConnected || isAnonymous}
               style={{
                 width: '100%',
                 padding: '16px 24px',
-                background: (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous)
+                background: (pdfUrl && !isUploading && !isCreatingRoom && !isSummarizing && !isExtractingText && isConnected && !isAnonymous)
                   ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                   : 'rgba(100,100,100,0.3)',
                 color: 'white',
@@ -376,20 +599,20 @@ const PDFPresentationDemo: React.FC = () => {
                 borderRadius: '14px',
                 fontSize: '16px',
                 fontWeight: '700',
-                cursor: (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous) ? 'pointer' : 'not-allowed',
+                cursor: (pdfUrl && !isUploading && !isCreatingRoom && !isSummarizing && !isExtractingText && isConnected && !isAnonymous) ? 'pointer' : 'not-allowed',
                 transition: 'all 0.3s',
-                boxShadow: (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous) ? '0 6px 25px rgba(147, 112, 219, 0.5)' : 'none',
+                boxShadow: (pdfUrl && !isUploading && !isCreatingRoom && !isSummarizing && !isExtractingText && isConnected && !isAnonymous) ? '0 6px 25px rgba(147, 112, 219, 0.5)' : 'none',
                 textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                opacity: (!pdfUrl || isUploading || isCreatingRoom || !isConnected || isAnonymous) ? 0.5 : 1
+                opacity: (!pdfUrl || isUploading || isCreatingRoom || isSummarizing || isExtractingText || !isConnected || isAnonymous) ? 0.5 : 1
               }}
               onMouseOver={(e) => {
-                if (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous) {
+                if (pdfUrl && !isUploading && !isCreatingRoom && !isSummarizing && !isExtractingText && isConnected && !isAnonymous) {
                   e.currentTarget.style.transform = 'translateY(-3px)';
                   e.currentTarget.style.boxShadow = '0 10px 35px rgba(147, 112, 219, 0.6)';
                 }
               }}
               onMouseOut={(e) => {
-                if (pdfUrl && !isUploading && !isCreatingRoom && isConnected && !isAnonymous) {
+                if (pdfUrl && !isUploading && !isCreatingRoom && !isSummarizing && !isExtractingText && isConnected && !isAnonymous) {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = '0 6px 25px rgba(147, 112, 219, 0.5)';
                 }
@@ -397,13 +620,17 @@ const PDFPresentationDemo: React.FC = () => {
             >
               {isUploading
                 ? `🚀 Uploading... ${Math.round(uploadProgress)}%`
-                : isCreatingRoom
-                ? '🌟 Creating Room...'
-                : !isConnected
-                ? '🔌 Connecting...'
-                : isAnonymous
-                ? '🔒 Sign In Required'
-                : '✨ Create Presentation'}
+                : isExtractingText
+                  ? `📄 Extracting text... ${Math.round(textExtractionProgress)}%`
+                  : isSummarizing
+                    ? '🤖 Gemini is thinking...'
+                    : isCreatingRoom
+                      ? '🌟 Creating Room...'
+                      : !isConnected
+                        ? '🔌 Connecting...'
+                        : isAnonymous
+                          ? '🔒 Sign In Required'
+                          : '✨ Create Presentation'}
             </button>
           </div>
         </div>
@@ -472,6 +699,10 @@ const PDFPresentationDemo: React.FC = () => {
       <style jsx global>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
       `}</style>
     </div>

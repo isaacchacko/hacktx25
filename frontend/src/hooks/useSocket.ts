@@ -13,7 +13,7 @@ interface SocketContextType {
   joinRoom: (joinCode: string) => void;
   leaveRoom: () => void;
   createRoom: () => void;
-  createRoomWithPdf: (pdfUrl: string) => void;
+  createRoomWithPdf: (pdfUrl: string, summary?: string, pageTexts?: string[]) => void;
 }
 
 export const useSocket = (): SocketContextType => {
@@ -138,10 +138,12 @@ export const useSocket = (): SocketContextType => {
     }
   };
 
-  const createRoomWithPdf = (pdfUrl: string) => {
+  const createRoomWithPdf = (pdfUrl: string, summary?: string, pageTexts?: string[]) => {
     if (socketRef.current && isConnected) {
       console.log('🏠 Creating room with PDF URL:', pdfUrl);
-      socketRef.current.emit('create-room-with-pdf', { pdfUrl });
+      console.log('📄 PDF Summary:', summary ? 'Provided' : 'Not provided');
+      console.log('📄 PDF Page Texts:', pageTexts ? `Provided (${pageTexts.length} pages)` : 'Not provided');
+      socketRef.current.emit('create-room-with-pdf', { pdfUrl, summary, pageTexts });
     }
   };
 
