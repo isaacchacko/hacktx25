@@ -40,7 +40,7 @@ export const useAssemblyAITranscription = (): UseAssemblyAITranscriptionReturn =
         throw new Error('AssemblyAI API key not found. Please add NEXT_PUBLIC_ASSEMBLY_API_KEY to your environment.');
       }
 
-      console.log('Starting AssemblyAI transcription with API key:', apiKey ? 'Present' : 'Missing');
+      console.log('Starting AssemblyAI transcription');
       
       // Test basic WebSocket connectivity first
       console.log('Testing WebSocket connectivity...');

@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
+// Gemini API calls now go through server-side /api/gemini route
 
 export interface SummaryRequest {
   pageNumber: number;
@@ -229,11 +229,9 @@ export async function generatePDFSummary(
   fileName?: string
 ): Promise<PDFSummaryResponse> {
   try {
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-      throw new Error('Gemini API key not found. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.');
-    }
+    // API key validation moved to server-side
 
-    console.log('🔑 Gemini API key found for PDF summarization');
+    // Gemini API calls now go through server-side route
     console.log('📄 PDF text length:', pdfText.length);
 
     if (!pdfText || pdfText.trim() === '') {
@@ -311,11 +309,9 @@ export async function getQuestionSuggestions(
   context?: QuestionSuggestionsContext
 ): Promise<QuestionSuggestionsResponse> {
   try {
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-      throw new Error('Gemini API key not found. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.');
-    }
+    // API key validation moved to server-side
 
-    console.log('🔑 Gemini API key found for question suggestions');
+    // Gemini API calls now go through server-side route
     console.log('💭 Prompt length:', prompt.length);
 
     if (!prompt || prompt.trim().length < 3) {
@@ -459,11 +455,9 @@ export async function analyzeQuestionConfusion(
   request: AIInsightsRequest
 ): Promise<AIInsightsResponse> {
   try {
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-      throw new Error('Gemini API key not found. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.');
-    }
+    // API key validation moved to server-side
 
-    console.log('🔑 Gemini API key found for AI insights analysis');
+    // Gemini API calls now go through server-side route
     console.log('📊 Questions count:', request.questions.length);
     console.log('📄 PDF text length:', request.pdfText.length);
 

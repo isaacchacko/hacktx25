@@ -30,8 +30,9 @@ async function bootstrap() {
   const app = express();
   const server = createServer(app);
 
-  // Basic CORS (can tighten after deploy)
-  app.use(cors());
+  // CORS configuration - restrict to Railway domain
+  const allowedOrigin = process.env.FRONTEND_URL || '*';
+  app.use(cors({ origin: allowedOrigin }));
 
   // Firebase Admin init (server-side only)
   const serviceAccount = {
@@ -91,7 +92,7 @@ async function bootstrap() {
 
   // Attach Socket.IO to this HTTP server
   const io = new Server(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] }
+    cors: { origin: allowedOrigin, methods: ['GET', 'POST'] }
   });
 
   // In-memory stores (migrated from backend)

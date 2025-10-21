@@ -581,10 +581,7 @@ export default function JoinRoomPage() {
     }
 
     const timeoutId = setTimeout(async () => {
-      if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-        console.log('Gemini API key not available, skipping suggestions');
-        return;
-      }
+      // Gemini API calls now go through server-side route
 
       // Generate unique request ID
       const currentRequestId = ++latestRequestId.current;
