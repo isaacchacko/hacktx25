@@ -36,12 +36,7 @@ export async function generateSlideSummary(
   }
 ): Promise<SummaryResponse> {
   try {
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-      throw new Error('Gemini API key not found. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.');
-    }
-
-    console.log('🔑 Gemini API key found, length:', process.env.NEXT_PUBLIC_GEMINI_API_KEY.length);
-    console.log('🔑 API key starts with:', process.env.NEXT_PUBLIC_GEMINI_API_KEY.substring(0, 10) + '...');
+    // API key validation moved to server-side
 
     // Debug logging of incoming transcription and context
     console.log('🧪 generateSlideSummary(): incoming', {
@@ -64,23 +59,7 @@ export async function generateSlideSummary(
       };
     }
 
-    // Try gemini-2.5-flash first, fallback to other models if needed
-    let model;
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-pro-latest'];
-    
-    for (const modelName of modelsToTry) {
-      try {
-        model = genAI.getGenerativeModel({ model: modelName });
-        console.log(`✅ Using model: ${modelName}`);
-        break;
-      } catch (modelError) {
-        console.log(`❌ ${modelName} not available, trying next...`);
-      }
-    }
-    
-    if (!model) {
-      throw new Error('No available Gemini models found');
-    }
+    // Use server-side API instead of direct client calls
 
     // Build context-aware prompt
     let contextInfo = '';
@@ -116,9 +95,23 @@ INSTRUCTIONS:
 Summary:`;
 
     console.log('🧪 generateSlideSummary(): prompt preview', prompt.slice(0, 1000));
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const summary = response.text().trim();
+    
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, model: 'gemini-1.5-flash' })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    const summary = data.text.trim();
 
     return {
       pageNumber,

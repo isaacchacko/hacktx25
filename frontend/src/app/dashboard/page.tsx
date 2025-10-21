@@ -73,7 +73,7 @@ export default function PresenterDashboard() {
   }, [user]);
 
   const handleViewPresentation = (presentation: Presentation) => {
-    const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(presentation.pdfUrl)}`;
+    const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(presentation.pdfUrl)}`;
     window.open(proxyUrl, '_blank');
   };
 

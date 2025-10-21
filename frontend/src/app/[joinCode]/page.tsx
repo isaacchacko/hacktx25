@@ -277,7 +277,7 @@ export default function JoinRoomPage() {
       console.log('📄 Found PDF URL in localStorage:', storedPdfUrl);
 
       // Convert Firebase URL to proxy URL to bypass CORS
-      const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(storedPdfUrl)}`;
+      const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(storedPdfUrl)}`;
       console.log('🔄 Using proxy URL for PDF:', proxyUrl);
 
       setPdfUrl(proxyUrl);
@@ -335,7 +335,7 @@ export default function JoinRoomPage() {
         console.log("📄 Received PDF URL from joined-room event:", data.pdfUrl);
 
         // Convert Firebase URL to proxy URL to bypass CORS
-        const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
+        const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
         console.log('🔄 Using proxy URL for PDF:', proxyUrl);
 
         setPdfUrl(proxyUrl);
@@ -462,7 +462,7 @@ export default function JoinRoomPage() {
         console.log("📄 Received PDF URL for room:", data.pdfUrl);
 
         // Convert Firebase URL to proxy URL to bypass CORS
-        const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
+        const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
         console.log('🔄 Using proxy URL for PDF:', proxyUrl);
 
         setPdfUrl(proxyUrl);

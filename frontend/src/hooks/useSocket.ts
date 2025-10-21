@@ -49,7 +49,7 @@ export const useSocket = (): SocketContextType => {
           console.log('Creating anonymous socket connection (no user)');
         }
 
-        const socket = io('http://localhost:3001', {
+        const socket = io({
           auth: authData
         });
 

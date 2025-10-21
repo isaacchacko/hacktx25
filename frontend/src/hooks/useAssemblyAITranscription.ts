@@ -33,15 +33,15 @@ export const useAssemblyAITranscription = (): UseAssemblyAITranscriptionReturn =
       setError(null);
       setIsTranscribing(true);
       
+      // Note: AssemblyAI WebSocket streaming requires client-side API key
+      // This is acceptable as it's a streaming service, not a one-time API call
       const apiKey = process.env.NEXT_PUBLIC_ASSEMBLY_API_KEY;
       if (!apiKey) {
-        throw new Error('AssemblyAI API key not found. Please add NEXT_PUBLIC_ASSEMBLY_API_KEY to your .env.local file.');
+        throw new Error('AssemblyAI API key not found. Please add NEXT_PUBLIC_ASSEMBLY_API_KEY to your environment.');
       }
 
       console.log('Starting AssemblyAI transcription with API key:', apiKey ? 'Present' : 'Missing');
-      console.log('API key length:', apiKey?.length);
-      console.log('API key starts with:', apiKey?.substring(0, 8) + '...');
-
+      
       // Test basic WebSocket connectivity first
       console.log('Testing WebSocket connectivity...');
       
