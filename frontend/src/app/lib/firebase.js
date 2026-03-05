@@ -6,13 +6,13 @@ import "firebase/compat/storage";
 
 // Your Firebase config (from Firebase console)
 const firebaseConfig = {
-  apiKey: "AIzaSyAEqgcG_B6L8FEMw2z4lhfFp5As5GH9VXc",
-  authDomain: "hacktx25-6176d.firebaseapp.com",
-  projectId: "hacktx25-6176d",
-  storageBucket: "hacktx25-6176d.firebasestorage.app",
-  messagingSenderId: "525828775817",
-  appId: "1:525828775817:web:5c0624a9ee97b20f4dcb58",
-  measurementId: "G-92ZX5KECR5"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase

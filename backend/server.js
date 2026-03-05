@@ -87,20 +87,52 @@ async function analyzeQuestionInsights(joinCode, questions, pdfText, totalPages,
   }
 }
 
-// Enable CORS for all origins
-app.use(cors());
+// Allowed origins for CORS
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. same-origin, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS: origin not allowed'));
+    }
+  }
+}));
+
+// Allowlist of Firebase Storage hostnames for the PDF proxy
+const ALLOWED_PDF_HOSTS = [
+  'firebasestorage.googleapis.com',
+  'storage.googleapis.com',
+];
 
 // PDF proxy endpoint to bypass CORS issues
 app.get('/api/pdf-proxy', async (req, res) => {
   try {
     const { url } = req.query;
-    
-    if (!url) {
+
+    if (!url || typeof url !== 'string') {
       return res.status(400).json({ error: 'PDF URL is required' });
     }
-    
+
+    // Validate that the URL points to an allowed Firebase Storage host (prevent SSRF)
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return res.status(400).json({ error: 'Invalid PDF URL' });
+    }
+
+    if (parsed.protocol !== 'https:' || !ALLOWED_PDF_HOSTS.includes(parsed.hostname)) {
+      console.warn('📄 Rejected PDF proxy request for disallowed host:', parsed.hostname);
+      return res.status(403).json({ error: 'PDF URL host not allowed' });
+    }
+
     console.log('📄 Proxying PDF request for URL:', url);
-    
+
     // Fetch the PDF from Firebase Storage
     const response = await axios.get(url, {
       responseType: 'stream',
@@ -108,7 +140,7 @@ app.get('/api/pdf-proxy', async (req, res) => {
         'User-Agent': 'Mozilla/5.0 (compatible; PDF-Proxy/1.0)'
       }
     });
-    
+
     // Set appropriate headers
     res.set({
       'Content-Type': 'application/pdf',
@@ -118,10 +150,10 @@ app.get('/api/pdf-proxy', async (req, res) => {
       'Access-Control-Allow-Headers': 'Content-Type',
       'Cache-Control': 'public, max-age=3600'
     });
-    
+
     // Pipe the PDF data to the response
     response.data.pipe(res);
-    
+
   } catch (error) {
     console.error('❌ Error proxying PDF:', error.message);
     res.status(500).json({ error: 'Failed to load PDF' });
@@ -130,7 +162,7 @@ app.get('/api/pdf-proxy', async (req, res) => {
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: allowedOrigins,
     methods: ["GET", "POST"]
   }
 });
@@ -143,87 +175,17 @@ const userSessions = new Map();
 
 // Helper function to verify Firebase token
 async function verifyFirebaseToken(token) {
+  if (!admin.apps.length) {
+    console.error('Firebase Admin SDK not initialized - cannot verify token');
+    return null;
+  }
+
   try {
-    if (!admin.apps.length) {
-        // Firebase Admin SDK not initialized, decode JWT token manually
-        console.log('Firebase Admin SDK not initialized - decoding JWT token manually');
-        console.log('Token received:', token.substring(0, 20) + '...');
-        
-        try {
-          // Decode the JWT token without verification
-          const base64Url = token.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-          }).join(''));
-          
-          const payload = JSON.parse(jsonPayload);
-          console.log('Extracted payload from token:', payload);
-          
-          if (payload.email) {
-            console.log('Using email from token payload:', payload.email);
-            return {
-              uid: payload.sub || payload.user_id || `mock-user-${Date.now()}`,
-              email: payload.email,
-              name: payload.name || payload.email.split('@')[0]
-            };
-          } else {
-            // Fallback if no email in token
-            const crypto = require('crypto');
-            const tokenHash = crypto.createHash('md5').update(token).digest('hex').slice(0, 12);
-            const mockUserId = `mock-user-${tokenHash}`;
-            console.log('No email in token, using mock user ID:', mockUserId);
-            return { 
-              uid: mockUserId, 
-              email: 'mock@example.com',
-              name: 'Mock User'
-            };
-          }
-        } catch (decodeError) {
-          console.error('Error decoding token payload:', decodeError);
-          // Fallback to mock user if decoding fails
-          const crypto = require('crypto');
-          const tokenHash = crypto.createHash('md5').update(token).digest('hex').slice(0, 12);
-          const mockUserId = `mock-user-${tokenHash}`;
-          console.log('Token decode failed, using mock user ID:', mockUserId);
-          return { 
-            uid: mockUserId, 
-            email: 'mock@example.com',
-            name: 'Mock User'
-          };
-        }
-    }
-    
     const decodedToken = await admin.auth().verifyIdToken(token);
     console.log('Successfully verified Firebase token for user:', decodedToken.email);
     return decodedToken;
   } catch (error) {
-    console.error('Error verifying Firebase token:', error);
-    
-    // Fallback: try to extract user info from the token without verification
-    try {
-      // Decode the JWT token without verification (for debugging/fallback)
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      
-      const payload = JSON.parse(jsonPayload);
-      console.log('Extracted payload from token:', payload);
-      
-      if (payload.email) {
-        console.log('Using email from token payload:', payload.email);
-        return {
-          uid: payload.sub || payload.user_id || `fallback-${Date.now()}`,
-          email: payload.email,
-          name: payload.name || payload.email.split('@')[0]
-        };
-      }
-    } catch (decodeError) {
-      console.error('Error decoding token payload:', decodeError);
-    }
-    
+    console.error('Error verifying Firebase token:', error.message);
     return null;
   }
 }
