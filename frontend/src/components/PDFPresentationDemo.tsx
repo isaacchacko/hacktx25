@@ -104,6 +104,11 @@ const PDFPresentationDemo: React.FC = () => {
   const handleCreatePresentation = async () => {
     if (!pdfUrl) return;
 
+    if (!auth || !db || !storage) {
+      setError("Firebase is not configured. Add the required NEXT_PUBLIC_FIREBASE_* env vars.");
+      return;
+    }
+
     const user = auth.currentUser;
     if (!user) {
       alert('Please sign in to create a presentation');

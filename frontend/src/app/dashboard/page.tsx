@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import Navbar from "../../components/Navbar";
 import { db } from "../lib/firebase";
 import { useSocket } from "../../hooks/useSocket";
+import { getPdfProxyUrl } from "../../utils/backendUrl";
 
 interface Presentation {
   id: string;
@@ -37,6 +38,12 @@ export default function PresenterDashboard() {
   useEffect(() => {
     const fetchPresentations = async () => {
       if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (!db) {
+        setLoadError("Firebase is not configured.");
         setIsLoading(false);
         return;
       }
@@ -73,7 +80,7 @@ export default function PresenterDashboard() {
   }, [user]);
 
   const handleViewPresentation = (presentation: Presentation) => {
-    const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(presentation.pdfUrl)}`;
+    const proxyUrl = getPdfProxyUrl(presentation.pdfUrl);
     window.open(proxyUrl, '_blank');
   };
 

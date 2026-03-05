@@ -15,12 +15,28 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.storageBucket &&
+  firebaseConfig.messagingSenderId &&
+  firebaseConfig.appId
+);
+
+const isBrowser = typeof window !== "undefined";
+const shouldInitializeFirebase = isBrowser && isFirebaseConfigured;
+
+if (shouldInitializeFirebase && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const hasInitializedApp = shouldInitializeFirebase && firebase.apps.length > 0;
 
 // Export commonly used Firebase services
-export const auth = firebase.auth();
-export const db = firebase.firestore();
-export const storage = firebase.storage();
+export const auth = hasInitializedApp ? firebase.auth() : null;
+export const db = hasInitializedApp ? firebase.firestore() : null;
+export const storage = hasInitializedApp ? firebase.storage() : null;
+export { isFirebaseConfigured };
 
 export default firebase;

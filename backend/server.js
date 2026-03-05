@@ -41,11 +41,18 @@ async function analyzeQuestionInsights(joinCode, questions, pdfText, totalPages,
     console.log(`🤖 Analyzing questions for room ${joinCode}...`);
     console.log(`🤖 Questions count: ${questions.length}, PDF text length: ${pdfText.length}, Total pages: ${totalPages}`);
     
-    // Try different frontend URLs
-    const frontendUrls = [
-      'http://localhost:3000/api/ai-insights',
-      'http://127.0.0.1:3000/api/ai-insights'
-    ];
+    // Try configured frontend URLs first, then local defaults.
+    const frontendUrls = (
+      process.env.FRONTEND_API_URLS
+        ? process.env.FRONTEND_API_URLS.split(',').map((url) => url.trim())
+        : [
+            process.env.FRONTEND_URL
+              ? `${process.env.FRONTEND_URL.replace(/\/+$/, '')}/api/ai-insights`
+              : null,
+            'http://localhost:3000/api/ai-insights',
+            'http://127.0.0.1:3000/api/ai-insights'
+          ]
+    ).filter(Boolean);
     
     let lastError;
     for (const url of frontendUrls) {
@@ -88,9 +95,18 @@ async function analyzeQuestionInsights(joinCode, questions, pdfText, totalPages,
 }
 
 // Allowed origins for CORS
+const defaultAllowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+if (process.env.FRONTEND_URL) {
+  defaultAllowedOrigins.push(process.env.FRONTEND_URL.replace(/\/+$/, ''));
+}
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  : defaultAllowedOrigins;
 
 app.use(cors({
   origin: (origin, callback) => {

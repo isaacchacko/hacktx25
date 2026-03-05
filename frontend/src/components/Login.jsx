@@ -5,6 +5,10 @@ import "firebaseui/dist/firebaseui.css";
 
 function Login() {
   useEffect(() => {
+    if (!auth) {
+      return;
+    }
+
     // Dynamically import firebaseui only on client-side to avoid SSR issues
     import("firebaseui").then((firebaseui) => {
       const ui =
@@ -31,6 +35,11 @@ function Login() {
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
       <h2>Sign in to Power Presenter</h2>
+      {!auth && (
+        <p style={{ color: "#b91c1c" }}>
+          Firebase is not configured. Add the required NEXT_PUBLIC_FIREBASE_* env vars.
+        </p>
+      )}
       <div id="firebaseui-auth-container"></div>
     </div>
   );

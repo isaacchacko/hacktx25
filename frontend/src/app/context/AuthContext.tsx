@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { auth, db } from "../lib/firebase";
+import { auth, db, isFirebaseConfigured } from "../lib/firebase";
 import firebase from "firebase/compat/app";
 
 interface AuthContextType {
@@ -32,14 +32,18 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<firebase.User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isFirebaseConfigured, setIsFirebaseConfigured] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = auth.onAuthStateChanged(async (u) => {
       setUser(u);
       setLoading(false);
 
-      if (u) {
+      if (u && db) {
         // Store user info in Firestore
         try {
           await db.collection("users").doc(u.uid).set({
@@ -61,6 +65,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
+    if (!auth) {
+      throw new Error("Firebase is not configured.");
+    }
+
     try {
       await auth.signInWithEmailAndPassword(email, password);
     } catch (error) {
@@ -70,6 +78,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signUp = async (email: string, password: string): Promise<void> => {
+    if (!auth) {
+      throw new Error("Firebase is not configured.");
+    }
+
     try {
       await auth.createUserWithEmailAndPassword(email, password);
     } catch (error) {
@@ -79,6 +91,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signInWithGoogle = async (): Promise<void> => {
+    if (!auth) {
+      throw new Error("Firebase is not configured.");
+    }
+
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
       await auth.signInWithPopup(provider);
@@ -89,6 +105,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signOut = async (): Promise<void> => {
+    if (!auth) {
+      return;
+    }
+
     try {
       await auth.signOut();
       setUser(null);

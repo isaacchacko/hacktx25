@@ -13,6 +13,7 @@ import AIInsightsPanel from "../../components/AIInsightsPanel";
 import { generateMultipleSummaries, SummaryRequest, getQuestionSuggestions, QuestionSuggestionsContext } from "../../utils/geminiApi";
 import { usePresentationTimer } from "../../hooks/usePresentationTimer";
 import { generatePresentationSummaryPDF, downloadPDF, generateFilename } from "../../utils/pdfGenerator";
+import { getPdfProxyUrl } from "../../utils/backendUrl";
 
 // Dynamically import PDF components to prevent SSR issues
 const PDFViewer = dynamic(() => import("../../components/PDFViewer"), {
@@ -277,7 +278,7 @@ export default function JoinRoomPage() {
       console.log('📄 Found PDF URL in localStorage:', storedPdfUrl);
 
       // Convert Firebase URL to proxy URL to bypass CORS
-      const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(storedPdfUrl)}`;
+      const proxyUrl = getPdfProxyUrl(storedPdfUrl);
       console.log('🔄 Using proxy URL for PDF:', proxyUrl);
 
       setPdfUrl(proxyUrl);
@@ -335,7 +336,7 @@ export default function JoinRoomPage() {
         console.log("📄 Received PDF URL from joined-room event:", data.pdfUrl);
 
         // Convert Firebase URL to proxy URL to bypass CORS
-        const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
+        const proxyUrl = getPdfProxyUrl(data.pdfUrl);
         console.log('🔄 Using proxy URL for PDF:', proxyUrl);
 
         setPdfUrl(proxyUrl);
@@ -462,7 +463,7 @@ export default function JoinRoomPage() {
         console.log("📄 Received PDF URL for room:", data.pdfUrl);
 
         // Convert Firebase URL to proxy URL to bypass CORS
-        const proxyUrl = `http://localhost:3001/api/pdf-proxy?url=${encodeURIComponent(data.pdfUrl)}`;
+        const proxyUrl = getPdfProxyUrl(data.pdfUrl);
         console.log('🔄 Using proxy URL for PDF:', proxyUrl);
 
         setPdfUrl(proxyUrl);
